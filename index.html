@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Petwalker - Gestão de Passeios</title>
+  <meta name="theme-color" content="#FF6633">
+  <meta name="description" content="App PWA para registro de passeios de cães, relatórios e fechamento de cobranças.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Tela de Bloqueio por PIN / Biometria -->
+  <div id="lock-screen" class="lock-screen" style="display: none;">
+    <svg class="lock-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+      <circle cx="12" cy="12" r="3" fill="currentColor"/>
+    </svg>
+    <h2 style="font-size: 1.5rem; color: var(--primary);">Petwalker</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Insira o PIN de 4 dígitos</p>
+
+    <div class="pin-dots">
+      <div class="dot" id="dot-0"></div>
+      <div class="dot" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div>
+      <div class="dot" id="dot-3"></div>
+    </div>
+
+    <div class="keypad">
+      <button class="keypad-btn" data-key="1">1</button>
+      <button class="keypad-btn" data-key="2">2</button>
+      <button class="keypad-btn" data-key="3">3</button>
+      <button class="keypad-btn" data-key="4">4</button>
+      <button class="keypad-btn" data-key="5">5</button>
+      <button class="keypad-btn" data-key="6">6</button>
+      <button class="keypad-btn" data-key="7">7</button>
+      <button class="keypad-btn" data-key="8">8</button>
+      <button class="keypad-btn" data-key="9">9</button>
+      <button class="keypad-btn" id="btn-biometrics" style="font-size: 1.1rem;">👆</button>
+      <button class="keypad-btn" data-key="0">0</button>
+      <button class="keypad-btn" id="btn-pin-del" style="font-size: 1.1rem;">⌫</button>
+    </div>
+  </div>
+
+  <!-- Header Superior -->
+  <header class="app-header">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0 6 0 3 3 0 0 0-3-3zm-5 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm10 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm15 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm-7.5-2c-3.5 0-6 2.5-6 6 0 2.5 2 4 6 4s6-1.5 6-4c0-3.5-2.5-6-6-6z"/>
+      </svg>
+      <div>
+        <div class="brand-name">Petwalker</div>
+        <div class="brand-subtitle">Registro de Passeios</div>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" id="btn-lock-app">
+      🔒 Bloquear
+    </button>
+  </header>
+
+  <!-- VIEW 1: REGISTRO / PASSEIO ATIVO -->
+  <main id="view-walk" class="view active">
+    <!-- Hero / Passeio Ativo -->
+    <div class="timer-hero" id="timer-hero">
+      <div id="hero-idle-state">
+        <div style="font-size: 1.1rem; opacity: 0.9;">Pronta para passear? 🐾</div>
+        <p style="font-size: 0.85rem; margin-top: 4px; opacity: 0.8;">Selecione o grupo e inicie o cronômetro.</p>
+      </div>
+
+      <div id="hero-active-state" style="display: none;">
+        <span class="badge badge-warning" style="background: rgba(255,255,255,0.25); color: #fff;">Passeio em Andamento</span>
+        <div class="timer-display" id="timer-text">00:00:00</div>
+        <div class="pet-chips" id="active-pets-chips"></div>
+      </div>
+    </div>
+
+    <!-- Card Iniciar / Finalizar Passeio -->
+    <div class="card">
+      <h3 class="card-title">📱 Novo Passeio</h3>
+
+      <div class="form-group">
+        <label class="form-label">Grupo de Passeio / Pets</label>
+        <select class="form-select" id="select-walk-group">
+          <option value="">-- Selecione o Grupo --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Duração Contratada (para cobrança)</label>
+        <select class="form-select" id="select-contracted-duration">
+          <option value="30">30 Minutos</option>
+          <option value="60" selected>60 Minutos (1 Hora)</option>
+        </select>
+      </div>
+
+      <div id="walk-active-options" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Observações Rápida de Bem-Estar</label>
+          <div class="quick-notes-grid">
+            <label class="note-toggle"><input type="checkbox" id="note-pee" value="Fez xixi"> 💦 Fez Xixi</label>
+            <label class="note-toggle"><input type="checkbox" id="note-poop" value="Fez cocô"> 💩 Fez Cocô</label>
+            <label class="note-toggle"><input type="checkbox" id="note-water" value="Bebeu água"> 💧 Bebeu Água</label>
+            <label class="note-toggle"><input type="checkbox" id="note-tired" value="Cansou bem"> 😴 Cansou / Brincou</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Anotação Adicional / Ocorrência</label>
+          <textarea class="form-textarea" id="walk-notes-text" rows="2" placeholder="Ex: Estava super alegre, sociável com outros cães..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📷 Foto do Passeio (opcional)</label>
+          <input type="file" class="form-input" id="walk-photo-input" accept="image/*" capture="environment">
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn btn-primary btn-full" id="btn-toggle-walk">
+          🚀 Iniciar Passeio
+        </button>
+        <button class="btn btn-outline btn-full" id="btn-open-manual-walk-home">
+          📝 Lançar Passeio Retroativo / Manual
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 2: RESUMO DIÁRIO -->
+  <main id="view-daily" class="view">
+    <div class="card">
+      <div class="card-title" style="flex-wrap: wrap; gap: 8px;">
+        <span>📅 Passeios do Dia</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="date" id="filter-daily-date" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;">
+          <button class="btn btn-primary btn-sm" id="btn-open-manual-walk">+ Lançar Passeio</button>
+        </div>
+      </div>
+
+      <div id="daily-stats" style="display: flex; gap: 12px; margin-bottom: 16px;">
+        <div style="flex: 1; background: var(--primary-light); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.75rem; color: var(--primary); font-weight: 600;">TOTAL PASSEIOS</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);" id="stat-daily-count">0</div>
+        </div>
+        <div style="flex: 1; background: var(--bg-cream); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">TEMPO TOTAL</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-main);" id="stat-daily-time">0h 0m</div>
+        </div>
+      </div>
+
+      <ul class="item-list" id="daily-sessions-list">
+        <!-- Inserido dinamicamente -->
+      </ul>
+    </div>
+  </main>
+
+  <!-- VIEW 3: TUTORES & GRUPOS DE PETS -->
+  <main id="view-tutors" class="view">
+    <div class="card">
+      <div class="card-title">
+        <span>🐾 Tutores & Grupos</span>
+        <button class="btn btn-primary btn-sm" id="btn-open-tutor-modal">+ Novo Tutor</button>
+      </div>
+      <div id="tutors-tree-list">
+        <!-- Inserido dinamicamente -->
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 4: FECHAMENTO MENSAL & FATURAS -->
+  <main id="view-invoice" class="view">
+    <div class="card">
+      <h3 class="card-title">💰 Fechamento Mensal</h3>
+
+      <div class="form-row-responsive" style="margin-bottom: 14px;">
+        <div class="form-group">
+          <label class="form-label">Mês / Ano</label>
+          <input type="month" class="form-input" id="invoice-month-picker">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tutor</label>
+          <select class="form-select" id="invoice-tutor-select">
+            <option value="">-- Selecione o Tutor --</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="invoice-preview-area" style="display: none;">
+        <!-- Painel com Fatura Apurada -->
+        <div style="background: var(--bg-cream); border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--primary);" id="inv-tutor-name">Maria Silva</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);" id="inv-period-text">Referência: 08/2026</div>
+
+          <div style="margin: 14px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); padding: 10px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+              <span>Passeios Realizados (<span id="inv-session-count">0</span>):</span>
+              <strong id="inv-session-cost">R$ 0,00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-adjustments-row">
+              <span>Ajustes / Créditos / Débitos:</span>
+              <strong id="inv-adjustments-cost">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; color: var(--primary);">
+            <span>Total a Pagar:</span>
+            <span id="inv-total-cost">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn btn-outline btn-full" id="btn-add-adjustment">+ Adicionar Crédito / Débito</button>
+          <button class="btn btn-primary btn-full" id="btn-share-whatsapp">💬 Enviar Resumo por WhatsApp</button>
+          <button class="btn btn-secondary btn-full" id="btn-preview-email">👁️ Revisar & Enviar Fatura por E-mail</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VIEW 5: CONFIGURAÇÕES -->
+  <main id="view-settings" class="view">
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">Tema Visual da Aplicação</label>
+        <select class="form-select" id="select-app-theme">
+          <option value="auto">⚙️ Automático (Tema do Sistema)</option>
+          <option value="light">☀️ Modo Claro (Creme Original Petwalker)</option>
+          <option value="dark">🌙 Modo Escuro (Dark Mode)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">PIN de Segurança (4 dígitos)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234">
+          <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Biometria do Celular (WebAuthn)</label>
+        <button class="btn btn-outline btn-full" id="btn-register-bio">👆 Cadastrar Biometria Nativa</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Chave PIX para Faturas</label>
+        <input type="text" class="form-input" id="input-setting-pix" placeholder="E-mail, telefone ou CPF">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">URL do Google Apps Script (Drive + Gmail)</label>
+        <input type="url" class="form-input" id="input-setting-google" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+
+      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn btn-primary btn-full" id="btn-save-settings">Salvar Configurações</button>
+        <button class="btn btn-outline btn-full" id="btn-sync-google-now">☁️ Fazer Backup no Google Drive</button>
+        <button class="btn btn-secondary btn-full" id="btn-pull-google-now">🔄 Sincronizar do Google Drive</button>
+        <button class="btn btn-outline btn-full" id="btn-export-json">📥 Exportar Backup Local (JSON)</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- NAVBAR INFERIOR -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-target="view-walk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+      Passeio
+    </button>
+    <button class="nav-item" data-target="view-daily">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      Diário
+    </button>
+    <button class="nav-item" data-target="view-tutors">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+      Tutores
+    </button>
+    <button class="nav-item" data-target="view-invoice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="1" x2="12" y2="23"></line>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+      </svg>
+      Faturas
+    </button>
+    <button class="nav-item" data-target="view-settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      Ajustes
+    </button>
+  </nav>
+
+  <!-- MODAL TUTOR / GRUPO -->
+  <div id="modal-tutor" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="card-title" id="modal-tutor-title">Cadastrar Novo Tutor</h3>
+      <form id="form-tutor">
+        <input type="hidden" id="tutor-id">
+        <input type="hidden" id="tutor-group-id">
+
+        <div class="form-group">
+          <label class="form-label">Nome do Tutor</label>
+          <input type="text" class="form-input" id="tutor-name" required placeholder="Ex: Maria Silva">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone / WhatsApp</label>
+          <input type="tel" class="form-input" id="tutor-phone" placeholder="41999998888">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input type="email" class="form-input" id="tutor-email" placeholder="maria@exemplo.com">
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
+        <h4 style="margin-bottom: 10px; font-size: 1rem; color: var(--primary);">Grupo de Passeio & Pets</h4>
+
+        <div class="form-group">
+          <label class="form-label">Nome do Grupo (ex: "Lulu & Rex")</label>
+          <input type="text" class="form-input" id="group-name" required placeholder="Ex: Thor e Mel">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Valor 30 Min (R$)</label>
+            <input type="number" step="0.01" class="form-input" id="group-rate-30" required placeholder="40.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor 60 Min (R$)</label>
+            <input type="number" step="0.01" class="form-input" id="group-rate-60" required placeholder="70.00">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-tutor-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">Salvar Tutor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL AJUSTE FINANCEIRO -->
+  <div id="modal-adjustment" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="card-title">Adicionar Ajuste / Crédito</h3>
+      <form id="form-adjustment">
+        <div class="form-group">
+          <label class="form-label">Tipo de Ajuste</label>
+          <select class="form-select" id="adj-type">
+            <option value="credit">Crédito (Desconto no total)</option>
+            <option value="debit">Débito (Serviço extra / Dog Shower)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor (R$)</label>
+          <input type="number" step="0.01" class="form-input" id="adj-amount" required placeholder="20.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição</label>
+          <input type="text" class="form-input" id="adj-desc" required placeholder="Ex: Crédito passeio cancelado por chuva">
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-adj-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">Salvar Ajuste</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL LANÇAMENTO / EDIÇÃO MANUAL DE PASSEIO -->
+  <div id="modal-manual-walk" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="card-title" id="modal-walk-title">📝 Lançar / Editar Passeio</h3>
+      <form id="form-manual-walk">
+        <input type="hidden" id="manual-walk-id">
+
+        <div class="form-group">
+          <label class="form-label">Grupo de Passeio / Pets</label>
+          <select class="form-select" id="manual-walk-group" required>
+            <option value="">-- Selecione o Grupo --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Data do Passeio</label>
+          <input type="date" class="form-input" id="manual-walk-date" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Horário Inicial</label>
+            <input type="time" class="form-input" id="manual-walk-start" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horário Final</label>
+            <input type="time" class="form-input" id="manual-walk-end" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Duração Contratada (Cobrança)</label>
+          <select class="form-select" id="manual-walk-duration" required>
+            <option value="30">30 Minutos</option>
+            <option value="60">60 Minutos (1 Hora)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Anotações / Ocorrências</label>
+          <textarea class="form-textarea" id="manual-walk-notes" rows="2" placeholder="Ex: Fez xixi, cocô, tudo ótimo..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-walk-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">Salvar Passeio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE PRÉ-VISUALIZAÇÃO E EDIÇÃO DE E-MAIL -->
+  <div id="modal-email-preview" class="modal-overlay">
+    <div class="modal-card" style="max-width: 650px;">
+      <h3 class="card-title">👁️ Revisar Fatura & Mensagem para o Tutor</h3>
+      
+      <div class="form-group">
+        <label class="form-label">💌 Mensagem Carinhosa Personalizada (opcional)</label>
+        <textarea class="form-textarea" id="preview-custom-note" rows="2" placeholder="Ex: Thor se comportou super bem esse mês! Agradeço a confiança."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pré-visualização do E-mail HTML</label>
+        <div id="email-preview-frame" style="background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; max-height: 300px; overflow-y: auto; color: #2D2B2A;">
+          <!-- HTML gerado em tempo real -->
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-outline btn-full" id="btn-close-email-modal">Fechar</button>
+          <button class="btn btn-primary btn-full" id="btn-confirm-send-google">📧 Enviar via Google (Gmail)</button>
+        </div>
+        <button class="btn btn-secondary btn-full" id="btn-open-in-gmail-web">🔗 Abrir no Gmail Web (Aba do Navegador)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE SELEÇÃO E RESTAURAÇÃO DE BACKUPS HISTÓRICOS -->
+  <div id="modal-restore-backup" class="modal-overlay">
+    <div class="modal-card" style="max-width: 600px;">
+      <h3 class="card-title">🔄 Selecionar Versão para Restaurar</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+        Escolha qual arquivo de backup salvo na pasta <strong>Petwalker_Backups</strong> do Google Drive deseja restaurar:
+      </p>
+
+      <div id="backup-list-container" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Lista carregada via JS -->
+        <div style="text-align: center; padding: 20px; color: var(--text-muted);">Carregando histórico...</div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-outline btn-full" id="btn-close-restore-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/app.v5.js"></script>
+</body>
+</html>
