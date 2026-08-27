@@ -1,20 +1,28 @@
-# Guia do Google Apps Script (Com Versionamento de Backups) - Petwalker PWA
+# Guia do Google Apps Script (Com Versionamento & Retenção Inteligente de Backups) - Petwalker PWA
 
-Este guia ensina como publicar o script no **Google Apps Script** para salvar os backups em uma pasta dedicada **`Petwalker_Backups`** no Google Drive, com **histórico de versões** para que você possa escolher qualquer data passada na hora de restaurar.
+Este guia fornece o código atualizado do **Google Apps Script** para salvar os backups na pasta **`Petwalker_Backups`** no seu Google Drive com **política automática de retenção e limpeza**.
 
 ---
 
-## 🎯 O que este script faz?
+## 🎯 Política Inteligente de Retenção de Backups
 
-1. **Pasta Dedicada**: Cria e gerencia a pasta `Petwalker_Backups` no seu Google Drive.
-2. **Histórico de Versões (`action: "backup_sync"`)**: Salva um arquivo atualizado (`petwalker-latest.json`) E gera uma versão com data/hora (ex: `backup-2026-08-23_18-30.json`).
-3. **Listar Histórico (`action: "list_backups"`)**: Retorna a lista de todos os backups salvos com data, hora e tamanho do arquivo.
-4. **Restaurar Versão Específica (`action: "pull_sync"`)**: Restaura o arquivo selecionado pela usuária.
-5. **Envio de E-mail de Fatura (`action: "send_invoice_email"`)**: Dispara e-mails pelo Gmail oficial.
+O script executa a limpeza automática após cada sincronização de backup:
+
+1. **Backups Recentes (Últimos 20 dias)**:
+   - **100% preservados**. Todos os backups granulares (diários ou por passeio) ficam disponíveis para restaurar a qualquer momento.
+2. **Backups Mensais (Entre 21 dias e 1 ano)**:
+   - O script preserva automaticamente o **último backup de cada mês** como histórico consolidado.
+   - Backups diários intermediários com mais de 20 dias são descartados para economizar espaço.
+3. **Expiração Anual (> 1 ano)**:
+   - Backups mensais com mais de 365 dias são excluídos definitivamente.
+4. **Arquivo Atual (`petwalker-latest.json`)**:
+   - Sempre preservado com o snapshot mais recente.
 
 ---
 
 ## 🛠️ Código Completo do Google Apps Script
+
+Copie e cole este código no seu projeto do **Google Apps Script**:
 
 ```javascript
 function getOrCreateFolder(folderName) {
@@ -25,13 +33,75 @@ function getOrCreateFolder(folderName) {
   return DriveApp.createFolder(folderName);
 }
 
+/**
+ * Política de Retenção Automática:
+ * - Mantém todos os backups dos últimos 20 dias.
+ * - Para backups com mais de 20 dias: mantém apenas o último backup de cada mês.
+ * - Exclui backups com mais de 1 ano (365 dias).
+ */
+function cleanupOldBackups(folder) {
+  var now = new Date();
+  var twentyDaysAgo = new Date(now.getTime() - (20 * 24 * 60 * 60 * 1000));
+  var oneYearAgo = new Date(now.getTime() - (365 * 24 * 60 * 60 * 1000));
+
+  var files = folder.getFiles();
+  var versionFiles = [];
+
+  while (files.hasNext()) {
+    var file = files.next();
+    var name = file.getName();
+
+    // Ignora o arquivo petwalker-latest.json
+    if (name === 'petwalker-latest.json') continue;
+
+    if (name.startsWith('backup-') && name.endsWith('.json')) {
+      versionFiles.push({
+        file: file,
+        name: name,
+        updatedAt: file.getLastUpdated()
+      });
+    }
+  }
+
+  // Ordenar do mais novo para o mais antigo
+  versionFiles.sort(function(a, b) {
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  });
+
+  var monthlyKept = {};
+
+  for (var i = 0; i < versionFiles.length; i++) {
+    var item = versionFiles[i];
+    var fileDate = item.updatedAt;
+    var monthKey = fileDate.getFullYear() + '-' + (fileDate.getMonth() + 1);
+
+    // 1. Mais de 1 ano -> Excluir
+    if (fileDate < oneYearAgo) {
+      item.file.setTrashed(true);
+      continue;
+    }
+
+    // 2. Últimos 20 dias -> Manter todos
+    if (fileDate >= twentyDaysAgo) {
+      continue;
+    }
+
+    // 3. Entre 21 dias e 1 ano -> Manter apenas o último do mês
+    if (!monthlyKept[monthKey]) {
+      monthlyKept[monthKey] = true; // Preserva o mais recente daquele mês
+    } else {
+      item.file.setTrashed(true); // Descarta os intermediários daquele mês
+    }
+  }
+}
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var action = data.action;
     var folder = getOrCreateFolder('Petwalker_Backups');
 
-    // 1. SALVAR BACKUP (LATEST + CÓPIA COM DATA/HORA)
+    // 1. SALVAR BACKUP (LATEST + CÓPIA COM DATA/HORA + LIMPEZA AUTOMÁTICA)
     if (action === 'backup_sync') {
       var latestName = 'petwalker-latest.json';
       var now = new Date();
@@ -50,9 +120,12 @@ function doPost(e) {
       // Criar cópia versionada no histórico
       folder.createFile(versionName, content, MimeType.PLAIN_TEXT);
 
+      // Executar limpeza automática conforme regras de retenção (20 dias / mensal / 1 ano)
+      cleanupOldBackups(folder);
+
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
-        message: 'Backup versionado salvo na pasta Petwalker_Backups!'
+        message: 'Backup salvo com sucesso no Google Drive (com retenção automática de 20 dias e mensal)!'
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -127,10 +200,13 @@ function doPost(e) {
   }
 }
 ```
-## 📄 Atualizações de Documentação
 
-A interface de listagem de tutores foi refinada:
-- Botões **Editar** e **Excluir** foram movidos para a base dos cards, garantindo que nome, telefone e e‑mail tenham espaço total.
-- Layout responsivo com `word‑break` e espaçamento adequado, evitando compressão em telas menores.
+---
 
-Essas melhorias não alteram a lógica do Apps Script, mas oferecem melhor experiência ao usuário ao gerenciar tutores.
+## 🚀 Como Atualizar no Google Apps Script
+
+1. Abra seu projeto no [script.google.com](https://script.google.com).
+2. Substitua o conteúdo do arquivo `Código.gs` pelo código acima.
+3. Clique em **Salvar (💾)**.
+4. Clique em **Implantar > Gerenciar Implantações**.
+5. Clique no ícone de lápis (✏️) da implantação ativa, selecione **Nova Versão** e clique em **Implantar**.

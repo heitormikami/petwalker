@@ -1,0 +1,4 @@
+# Binaries & Logs
+cloudflared.exe
+*.log
+scratch/

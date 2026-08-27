@@ -95,6 +95,23 @@ export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [
 }
 
 /**
+ * Normaliza e formata o número de telefone para o padrão internacional do WhatsApp sem duplicar DDI 55
+ * @param {string} rawPhone 
+ * @returns {string}
+ */
+export function formatWhatsAppPhone(rawPhone) {
+  if (!rawPhone) return '';
+  const digits = String(rawPhone).replace(/\D/g, '');
+  if (!digits) return '';
+  // Se já começa com 55 e tem tamanho de DDI + DDD + número (12 ou 13 dígitos)
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+  // Caso contrário, adiciona o DDI 55 do Brasil
+  return `55${digits}`;
+}
+
+/**
  * Formata mensagem limpa para envio via WhatsApp
  * @param {Object} invoice 
  * @returns {string}

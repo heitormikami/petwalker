@@ -4,7 +4,8 @@ import {
   calculateSessionCost,
   calculateMonthlyInvoice,
   formatWhatsAppSummary,
-  formatEmailHtml
+  formatEmailHtml,
+  formatWhatsAppPhone
 } from '../src/domain/models.js';
 
 test('calculateSessionCost - 30 minutos', () => {
@@ -132,3 +133,69 @@ test('formatEmailHtml - gera template HTML bem formatado com mensagem personaliz
   assert.ok(html.includes('R$ 160,00'));
   assert.ok(html.includes('Thor se comportou muito bem este mês!'));
 });
+
+test('Sessões com Quilometragem Opcional (Carro) - Registro e Totalização', () => {
+  const tutor = { id: 'tut-1', name: 'Maria Silva' };
+  const group = { id: 'grp-1', tutorId: 'tut-1', rate30min: 40.00, rate60min: 70.00 };
+
+  const sessionWithKm = {
+    id: 's-km-1',
+    groupId: 'grp-1',
+    contractedDuration: 60,
+    cost: 70.00,
+    date: '2026-08-15T09:00:00Z',
+    kmStart: 12450.0,
+    kmEnd: 12465.5,
+    kmTotal: 15.5
+  };
+
+  const sessionWithoutKm = {
+    id: 's-walk-1',
+    groupId: 'grp-1',
+    contractedDuration: 30,
+    cost: 40.00,
+    date: '2026-08-16T09:00:00Z',
+    kmStart: null,
+    kmEnd: null,
+    kmTotal: null
+  };
+
+  const invoice = calculateMonthlyInvoice(tutor, [group], [sessionWithKm, sessionWithoutKm], [], '2026-08');
+  assert.equal(invoice.totalSessions, 2);
+  assert.equal(invoice.sessionsTotalCost, 110.00);
+  assert.equal(invoice.totalToPay, 110.00);
+  assert.equal(sessionWithKm.kmTotal, 15.5);
+  assert.equal(sessionWithoutKm.kmTotal, null);
+});
+
+import { hashPin, verifyPin } from '../src/services/security.js';
+
+test('formatWhatsAppPhone - normaliza sem duplicar DDI 55', () => {
+  // Caso 1: número simples com DDD
+  assert.equal(formatWhatsAppPhone('41999998888'), '5541999998888');
+  // Caso 2: número com máscara "(41) 99999-8888"
+  assert.equal(formatWhatsAppPhone('(41) 99999-8888'), '5541999998888');
+  // Caso 3: número já com +55 (13 dígitos) -> Não duplica
+  assert.equal(formatWhatsAppPhone('+55 (41) 99999-8888'), '5541999998888');
+  // Caso 4: número fixo com +55 (12 dígitos)
+  assert.equal(formatWhatsAppPhone('+55 41 3333-4444'), '554133334444');
+  // Caso 5: string vazia ou nula
+  assert.equal(formatWhatsAppPhone(''), '');
+  assert.equal(formatWhatsAppPhone(null), '');
+});
+
+test('hashPin & verifyPin - hashing SHA-256 e validação consistente em qualquer ambiente', async () => {
+  const pin = '1234';
+  const hash = await hashPin(pin);
+
+  // SHA-256 de "1234" é 03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4
+  assert.equal(hash, '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4');
+
+  const isCorrect = await verifyPin('1234', hash);
+  const isWrong = await verifyPin('9999', hash);
+
+  assert.equal(isCorrect, true);
+  assert.equal(isWrong, false);
+});
+
+

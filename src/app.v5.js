@@ -1,7 +1,7 @@
 import { StorageService } from './services/storage.js';
 import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js';
 import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml } from './domain/models.js';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone } from './domain/models.js';
 
 // ESTADO DA APLICAÇÃO
 const state = {
@@ -13,6 +13,7 @@ const state = {
   settings: {},
   activeSession: null,
   timerInterval: null,
+  walkAlertTimers: {},
   activeView: 'view-walk',
   enteredPin: ''
 };
@@ -30,14 +31,28 @@ async function initApp() {
     setupSettingsController();
     setupManualWalkModal();
     setupEmailPreviewModal();
+    setupPhotoViewerModal();
+    setupOnlineOfflineStatus();
 
-    // Registrar Service Worker apenas em produção, desativar em localhost para dev
+    // Recuperar passeio em andamento se o app fechou durante a caminhada (Anti-crash)
+    restoreActiveSessionIfAny();
+
+    // Registrar Service Worker para suporte offline completo
     if ('serviceWorker' in navigator) {
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-      } else {
-        navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service Worker erro:', err));
-      }
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => {
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('Petwalker: nova versão de cache instalada.');
+                }
+              };
+            }
+          };
+        })
+        .catch(err => console.warn('Service Worker erro:', err));
     }
   } catch (err) {
     console.error('Erro na inicialização:', err);
@@ -63,20 +78,26 @@ async function loadAppData() {
   const pixKey = await StorageService.getSetting('pixKey');
   const googleScriptUrl = await StorageService.getSetting('googleScriptUrl');
   const appTheme = await StorageService.getSetting('appTheme') || 'auto';
+  const pendingSync = await StorageService.getSetting('pendingSync');
+  const lastSyncTime = await StorageService.getSetting('lastSyncTime');
+  const autoBackupEnabled = await StorageService.getSetting('autoBackupEnabled');
 
   state.settings = {
     pinHash,
     bioCred,
     pixKey: pixKey || 'contato@petwalker.com.br',
     googleScriptUrl: googleScriptUrl || '',
-    appTheme
+    appTheme,
+    pendingSync: pendingSync === true,
+    lastSyncTime: lastSyncTime || null,
+    autoBackupEnabled: autoBackupEnabled !== false
   };
 
   applyTheme(appTheme);
 
-  // Se houver PIN configurado, exibe a tela de bloqueio
-  if (state.settings.pinHash) {
-    document.getElementById('lock-screen').style.display = 'flex';
+  // Se houver PIN ou Biometria configurada, exibe a tela de bloqueio
+  if (state.settings.pinHash || state.settings.bioCred) {
+    showLockScreen();
   }
 
   // Preencher seletores e listas na UI
@@ -84,6 +105,8 @@ async function loadAppData() {
   renderDailyView();
   renderTutorsList();
   updateInvoiceTutorDropdown();
+  updateSyncStatusBadge();
+  updatePinSettingsBadge();
 
   // Carregar dados de configurações nos campos
   if (document.getElementById('input-setting-pix')) {
@@ -95,6 +118,9 @@ async function loadAppData() {
   if (document.getElementById('select-app-theme')) {
     document.getElementById('select-app-theme').value = appTheme;
   }
+  if (document.getElementById('toggle-auto-backup')) {
+    document.getElementById('toggle-auto-backup').checked = state.settings.autoBackupEnabled;
+  }
 }
 
 function applyTheme(theme) {
@@ -105,16 +131,78 @@ function applyTheme(theme) {
   }
 }
 
-// CONTROLADOR DA TELA DE BLOQUEIO / PIN
+// -------------------------------------------------------------
+// CONTROLADOR DA TELA DE BLOQUEIO / PIN E BIOMETRIA
+// -------------------------------------------------------------
+let lockPinVisible = false;
+
+function showLockScreen() {
+  const lockScreen = document.getElementById('lock-screen');
+  const lockSubtitle = document.getElementById('lock-subtitle');
+  if (!lockScreen) return;
+
+  state.enteredPin = '';
+  updatePinDots();
+
+  if (lockSubtitle) {
+    if (state.settings.pinHash && state.settings.bioCred) {
+      lockSubtitle.textContent = 'Insira o PIN de 4 dígitos ou use Biometria';
+    } else if (state.settings.bioCred && !state.settings.pinHash) {
+      lockSubtitle.textContent = 'Toque no botão 👆 para autenticar com Biometria';
+    } else {
+      lockSubtitle.textContent = 'Insira o PIN de 4 dígitos';
+    }
+  }
+
+  lockScreen.style.display = 'flex';
+
+  // Se houver biometria cadastrada e sem PIN, dispara tentativa automática
+  if (state.settings.bioCred && !state.settings.pinHash) {
+    setTimeout(async () => {
+      try {
+        const success = await authenticateBiometrics(state.settings.bioCred);
+        if (success) {
+          lockScreen.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Tentativa inicial de biometria:', e);
+      }
+    }, 400);
+  }
+}
+
 function setupLockScreen() {
   const lockScreen = document.getElementById('lock-screen');
   const keypadBtns = document.querySelectorAll('.keypad-btn[data-key]');
   const btnDel = document.getElementById('btn-pin-del');
   const btnBio = document.getElementById('btn-biometrics');
   const btnLock = document.getElementById('btn-lock-app');
+  const btnTogglePin = document.getElementById('btn-toggle-lock-pin-visibility');
+
+  if (btnTogglePin) {
+    btnTogglePin.addEventListener('click', () => {
+      lockPinVisible = !lockPinVisible;
+      btnTogglePin.textContent = lockPinVisible ? '🙈' : '👁️';
+      const pinContainer = document.querySelector('.pin-dots');
+      if (pinContainer) {
+        pinContainer.classList.toggle('revealed', lockPinVisible);
+      }
+      updatePinDots();
+    });
+  }
 
   keypadBtns.forEach(btn => {
     btn.addEventListener('click', async () => {
+      // Feedback tátil (vibração de toque em celulares)
+      if (navigator.vibrate) {
+        try { navigator.vibrate(10); } catch (e) {}
+      }
+
+      if (!state.settings.pinHash) {
+        alert('Nenhum PIN cadastrado. Use o botão de Biometria 👆 ou redefina o acesso abaixo.');
+        return;
+      }
+
       if (state.enteredPin.length < 4) {
         state.enteredPin += btn.dataset.key;
         updatePinDots();
@@ -137,6 +225,7 @@ function setupLockScreen() {
 
   if (btnDel) {
     btnDel.addEventListener('click', () => {
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
       state.enteredPin = state.enteredPin.slice(0, -1);
       updatePinDots();
     });
@@ -144,12 +233,19 @@ function setupLockScreen() {
 
   if (btnBio) {
     btnBio.addEventListener('click', async () => {
+      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
       if (state.settings.bioCred) {
-        const success = await authenticateBiometrics(state.settings.bioCred);
-        if (success) {
-          lockScreen.style.display = 'none';
-        } else {
-          alert('Autenticação por biometria falhou.');
+        try {
+          const success = await authenticateBiometrics(state.settings.bioCred);
+          if (success) {
+            lockScreen.style.display = 'none';
+            state.enteredPin = '';
+            updatePinDots();
+          } else {
+            alert('Autenticação por biometria falhou.');
+          }
+        } catch (err) {
+          alert(`Erro na biometria: ${err.message}`);
         }
       } else {
         alert('Biometria não cadastrada. Acesse as Configurações após entrar.');
@@ -159,14 +255,52 @@ function setupLockScreen() {
 
   if (btnLock) {
     btnLock.addEventListener('click', () => {
-      if (!state.settings.pinHash) {
-        alert('Cadastre um PIN em Ajustes para poder bloquear o app.');
+      if (!state.settings.pinHash && !state.settings.bioCred) {
+        alert('Cadastre um PIN ou Biometria em Ajustes para poder bloquear o app.');
         return;
       }
-      state.enteredPin = '';
-      updatePinDots();
-      lockScreen.style.display = 'flex';
+      showLockScreen();
     });
+  }
+
+  const btnForgot = document.getElementById('btn-forgot-pin');
+  const modalReset = document.getElementById('modal-reset-pin');
+  const inputResetConfirm = document.getElementById('input-confirm-reset-pin');
+  const btnCancelReset = document.getElementById('btn-cancel-reset-pin');
+  const btnConfirmReset = document.getElementById('btn-confirm-reset-pin');
+
+  if (btnForgot && modalReset) {
+    btnForgot.addEventListener('click', () => {
+      if (inputResetConfirm) inputResetConfirm.value = '';
+      modalReset.classList.add('active');
+      if (inputResetConfirm) inputResetConfirm.focus();
+    });
+
+    if (btnCancelReset) {
+      btnCancelReset.addEventListener('click', () => {
+        modalReset.classList.remove('active');
+      });
+    }
+
+    if (btnConfirmReset) {
+      btnConfirmReset.addEventListener('click', async () => {
+        const val = inputResetConfirm ? inputResetConfirm.value.trim().toUpperCase() : '';
+        if (val === 'REDEFINIR') {
+          await StorageService.saveSetting('pinHash', null);
+          await StorageService.saveSetting('bioCred', null);
+          state.settings.pinHash = null;
+          state.settings.bioCred = null;
+          state.enteredPin = '';
+          updatePinDots();
+          updatePinSettingsBadge();
+          modalReset.classList.remove('active');
+          lockScreen.style.display = 'none';
+          alert('✅ PIN de segurança removido com sucesso! O acesso aos seus passeios e tutores foi liberado.');
+        } else {
+          alert('Por favor, digite exatamente a palavra REDEFINIR para confirmar.');
+        }
+      });
+    }
   }
 }
 
@@ -176,14 +310,18 @@ function updatePinDots() {
     if (dot) {
       if (i < state.enteredPin.length) {
         dot.classList.add('filled');
+        dot.textContent = lockPinVisible ? state.enteredPin[i] : '';
       } else {
         dot.classList.remove('filled');
+        dot.textContent = '';
       }
     }
   }
 }
 
+// -------------------------------------------------------------
 // NAVEGAÇÃO DE VIEWS
+// -------------------------------------------------------------
 function setupNavigation() {
   const navItems = document.querySelectorAll('.nav-item');
   const views = document.querySelectorAll('.view');
@@ -206,7 +344,273 @@ function setupNavigation() {
   });
 }
 
+// -------------------------------------------------------------
+// COMPRESSÃO DE FOTOS (CANVAS)
+// -------------------------------------------------------------
+async function compressImageFile(file, maxWidth = 800, maxHeight = 800, quality = 0.75) {
+  if (!file) return null;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+
+        if (w > maxWidth || h > maxHeight) {
+          if (w > h) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          } else {
+            w = Math.round((w * maxHeight) / h);
+            h = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+function setupPhotoViewerModal() {
+  const modal = document.getElementById('modal-photo-viewer');
+  const imgEl = document.getElementById('viewer-photo-img');
+  const btnClose = document.getElementById('btn-close-photo-viewer');
+
+  if (btnClose && modal) {
+    btnClose.addEventListener('click', () => modal.classList.remove('active'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('active');
+    });
+  }
+
+  window.openPhotoViewer = (photoDataUrl) => {
+    if (!modal || !imgEl || !photoDataUrl) return;
+    imgEl.src = photoDataUrl;
+    modal.classList.add('active');
+  };
+}
+
+// -------------------------------------------------------------
+// ANTI-CRASH DO PASSEIO ATIVO (LOCALSTORAGE RECOVERY)
+// -------------------------------------------------------------
+function restoreActiveSessionIfAny() {
+  try {
+    const savedJson = localStorage.getItem('petwalker_active_walk');
+    if (!savedJson) return;
+    const savedSession = JSON.parse(savedJson);
+    if (!savedSession || !savedSession.startTime || !savedSession.groupId) return;
+
+    state.activeSession = savedSession;
+
+    const selectGroup = document.getElementById('select-walk-group');
+    const walkOptions = document.getElementById('walk-active-options');
+    const heroIdle = document.getElementById('hero-idle-state');
+    const heroActive = document.getElementById('hero-active-state');
+    const timerText = document.getElementById('timer-text');
+    const chipsContainer = document.getElementById('active-pets-chips');
+    const btnToggle = document.getElementById('btn-toggle-walk');
+
+    if (selectGroup) {
+      selectGroup.value = savedSession.groupId;
+      selectGroup.disabled = true;
+    }
+    if (heroIdle) heroIdle.style.display = 'none';
+    if (heroActive) heroActive.style.display = 'block';
+    if (walkOptions) walkOptions.style.display = 'block';
+
+    if (btnToggle) {
+      btnToggle.textContent = '⏹️ Concluir Passeio';
+      btnToggle.classList.remove('btn-primary');
+      btnToggle.classList.add('btn-danger');
+    }
+
+    if (chipsContainer) {
+      chipsContainer.innerHTML = (savedSession.pets || [savedSession.groupName || 'Pets'])
+        .map(name => `<span class="chip">🐶 ${name}</span>`).join('');
+    }
+
+    if (timerText) {
+      startTimerDisplay(savedSession.startTime, timerText);
+    }
+
+    // Reagendar alertas de 5 minutos e término para o tempo restante
+    scheduleWalkAlerts(savedSession);
+
+    console.log('Petwalker: Passeio ativo recuperado com sucesso após recarregamento!');
+  } catch (e) {
+    console.warn('Erro ao restaurar passeio ativo:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// ALERTAS SONOROS E NOTIFICAÇÕES DE PASSEIO (5 MIN & TÉRMINO)
+// -------------------------------------------------------------
+let audioCtx = null;
+
+function getAudioContext() {
+  if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContextClass();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playChimeSound(type = 'warning') {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    if (type === 'warning') {
+      // 2 beeps suaves ascendentes (D5 -> A5)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now); // D5
+      gain1.gain.setValueAtTime(0.18, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880.00, now + 0.25); // A5
+      gain2.gain.setValueAtTime(0.22, now + 0.25);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.25);
+      osc2.stop(now + 0.65);
+    } else {
+      // 3 beeps comemorativos de término (C5 -> E5 -> G5)
+      const freqs = [523.25, 659.25, 783.99];
+      freqs.forEach((freq, idx) => {
+        const startTime = now + (idx * 0.2);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.25, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.4);
+      });
+    }
+  } catch (err) {
+    console.warn('Erro ao reproduzir áudio:', err);
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'granted') return 'granted';
+  try {
+    return await Notification.requestPermission();
+  } catch (e) {
+    return Notification.permission;
+  }
+}
+
+async function sendWalkNotification(title, body, type = 'warning') {
+  playChimeSound(type);
+
+  if (navigator.vibrate) {
+    try {
+      navigator.vibrate(type === 'warning' ? [300, 150, 300] : [500, 200, 500]);
+    } catch (e) {}
+  }
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification(title, {
+          body,
+          icon: 'assets/icon-192.png',
+          badge: 'assets/favicon-32x32.png',
+          vibrate: type === 'warning' ? [300, 150, 300] : [500, 200, 500],
+          tag: 'walk-alert',
+          renotify: true
+        });
+      } else {
+        new Notification(title, {
+          body,
+          icon: 'assets/icon-192.png'
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao disparar notificação:', err);
+    }
+  }
+}
+
+function clearWalkAlerts() {
+  if (state.walkAlertTimers) {
+    if (state.walkAlertTimers.warning) clearTimeout(state.walkAlertTimers.warning);
+    if (state.walkAlertTimers.finish) clearTimeout(state.walkAlertTimers.finish);
+  }
+  state.walkAlertTimers = {};
+}
+
+function scheduleWalkAlerts(session) {
+  clearWalkAlerts();
+  if (!session || !session.startTime) return;
+
+  const startMs = new Date(session.startTime).getTime();
+  const durationMin = Number(session.contractedDuration || 60);
+  const totalMs = durationMin * 60 * 1000;
+  const warningMs = Math.max(0, (durationMin - 5) * 60 * 1000);
+  const now = Date.now();
+
+  const warningDelay = (startMs + warningMs) - now;
+  const finishDelay = (startMs + totalMs) - now;
+  const groupLabel = session.groupName || 'Pets';
+
+  state.walkAlertTimers = {};
+
+  if (warningDelay > 0) {
+    state.walkAlertTimers.warning = setTimeout(() => {
+      sendWalkNotification(
+        '⏰ Faltam 5 minutos!',
+        `O passeio com ${groupLabel} encerra em 5 minutos. Prepare o retorno!`,
+        'warning'
+      );
+    }, warningDelay);
+  }
+
+  if (finishDelay > 0) {
+    state.walkAlertTimers.finish = setTimeout(() => {
+      sendWalkNotification(
+        '🏁 Tempo Concluído!',
+        `A duração contratada de ${durationMin} minutos com ${groupLabel} foi atingida. Hora de concluir!`,
+        'finish'
+      );
+    }, finishDelay);
+  }
+}
+
+// -------------------------------------------------------------
 // CONTROLADOR DE PASSEIO (TIMER / NOVO PASSEIO)
+// -------------------------------------------------------------
 function setupWalkController() {
   const btnToggle = document.getElementById('btn-toggle-walk');
   const selectGroup = document.getElementById('select-walk-group');
@@ -216,92 +620,145 @@ function setupWalkController() {
   const timerText = document.getElementById('timer-text');
   const chipsContainer = document.getElementById('active-pets-chips');
 
+  if (!btnToggle) return;
+
+  if (selectGroup) {
+    selectGroup.addEventListener('change', () => {
+      updateDurationSelectorForGroup(selectGroup.value, 'select-contracted-duration');
+    });
+  }
+
   btnToggle.addEventListener('click', async () => {
-    if (!state.activeSession) {
-      // INICIAR PASSEIO
-      const groupId = selectGroup.value;
-      if (!groupId) {
-        alert('Por favor, selecione o grupo de passeio.');
-        return;
+    try {
+      if (!state.activeSession) {
+        // INICIAR PASSEIO
+        const groupId = selectGroup.value;
+        if (!groupId) {
+          alert('Por favor, selecione o grupo de passeio.');
+          return;
+        }
+
+        const group = state.groups.find(g => g.id === groupId);
+        const groupPets = state.pets.filter(p => p.groupId === groupId);
+
+        state.activeSession = {
+          id: `sess-${Date.now()}`,
+          groupId,
+          groupName: group ? group.name : 'Grupo',
+          startTime: new Date().toISOString(),
+          contractedDuration: Number(document.getElementById('select-contracted-duration')?.value || 60),
+          pets: groupPets.map(p => p.name)
+        };
+
+        // Salvar cópia local anti-crash
+        localStorage.setItem('petwalker_active_walk', JSON.stringify(state.activeSession));
+
+        // Solicitar permissão de notificação se necessário e agendar alertas
+        requestNotificationPermission();
+        scheduleWalkAlerts(state.activeSession);
+
+        // Atualizar UI para Estado Ativo
+        heroIdle.style.display = 'none';
+        heroActive.style.display = 'block';
+        walkOptions.style.display = 'block';
+        selectGroup.disabled = true;
+
+        btnToggle.textContent = '⏹️ Concluir Passeio';
+        btnToggle.classList.remove('btn-primary');
+        btnToggle.classList.add('btn-danger');
+
+        // Chips dos Pets
+        chipsContainer.innerHTML = (groupPets.length > 0 ? groupPets : [{ name: group ? group.name : 'Pets' }])
+          .map(p => `<span class="chip">🐶 ${p.name}</span>`).join('');
+
+        // Iniciar Cronômetro em Tempo Real
+        startTimerDisplay(state.activeSession.startTime, timerText);
+      } else {
+        // CONCLUIR PASSEIO
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        clearWalkAlerts();
+
+        const endTime = new Date().toISOString();
+        const notesArray = [];
+
+        if (document.getElementById('note-pee')?.checked) notesArray.push('Fez xixi 💦');
+        if (document.getElementById('note-poop')?.checked) notesArray.push('Fez cocô 💩');
+        if (document.getElementById('note-water')?.checked) notesArray.push('Bebeu água 💧');
+        if (document.getElementById('note-tired')?.checked) notesArray.push('Cansou/brincou 😴');
+
+        const customNotes = document.getElementById('walk-notes-text')?.value.trim() || '';
+        if (customNotes) notesArray.push(customNotes);
+
+        const group = state.groups.find(g => g.id === state.activeSession.groupId);
+        let sessionCost = 0;
+        try {
+          sessionCost = calculateSessionCost(group, state.activeSession.contractedDuration);
+        } catch (e) {
+          sessionCost = (group && (state.activeSession.contractedDuration === 30 ? group.rate30min : group.rate60min)) || 60;
+        }
+
+        // Quilometragem opcional
+        const kmStartVal = document.getElementById('walk-km-start')?.value.trim();
+        const kmEndVal = document.getElementById('walk-km-end')?.value.trim();
+        const kmStart = kmStartVal !== '' && !isNaN(kmStartVal) ? Number(kmStartVal) : null;
+        const kmEnd = kmEndVal !== '' && !isNaN(kmEndVal) ? Number(kmEndVal) : null;
+        const kmTotal = kmStart !== null && kmEnd !== null && kmEnd >= kmStart ? Number((kmEnd - kmStart).toFixed(1)) : null;
+
+        // Processar foto anexada
+        let photoBase64 = null;
+        const photoFile = document.getElementById('walk-photo-input')?.files?.[0];
+        if (photoFile) {
+          photoBase64 = await compressImageFile(photoFile);
+        }
+
+        const completedSession = {
+          ...state.activeSession,
+          endTime,
+          date: state.activeSession.startTime,
+          cost: Number(sessionCost) || 0,
+          notes: notesArray.join(' | '),
+          kmStart,
+          kmEnd,
+          kmTotal,
+          photo: photoBase64
+        };
+
+        // Salvar no IndexedDB
+        await StorageService.saveSession(completedSession);
+        state.sessions.push(completedSession);
+
+        // Remover do localStorage
+        localStorage.removeItem('petwalker_active_walk');
+
+        // Resetar UI
+        state.activeSession = null;
+        heroIdle.style.display = 'block';
+        heroActive.style.display = 'none';
+        walkOptions.style.display = 'none';
+        selectGroup.disabled = false;
+
+        // Limpar campos
+        const pee = document.getElementById('note-pee'); if (pee) pee.checked = false;
+        const poop = document.getElementById('note-poop'); if (poop) poop.checked = false;
+        const water = document.getElementById('note-water'); if (water) water.checked = false;
+        const tired = document.getElementById('note-tired'); if (tired) tired.checked = false;
+        const notesEl = document.getElementById('walk-notes-text'); if (notesEl) notesEl.value = '';
+        const kmStartEl = document.getElementById('walk-km-start'); if (kmStartEl) kmStartEl.value = '';
+        const kmEndEl = document.getElementById('walk-km-end'); if (kmEndEl) kmEndEl.value = '';
+        const photoEl = document.getElementById('walk-photo-input'); if (photoEl) photoEl.value = '';
+
+        btnToggle.textContent = '🚀 Iniciar Passeio';
+        btnToggle.classList.remove('btn-danger');
+        btnToggle.classList.add('btn-primary');
+
+        renderDailyView();
+        renderInvoiceView();
+        await markPendingChanges();
+        alert('🎉 Passeio concluído e salvo com sucesso!');
       }
-
-      const group = state.groups.find(g => g.id === groupId);
-      const groupPets = state.pets.filter(p => p.groupId === groupId);
-
-      state.activeSession = {
-        id: `sess-${Date.now()}`,
-        groupId,
-        groupName: group ? group.name : 'Grupo',
-        startTime: new Date().toISOString(),
-        contractedDuration: Number(document.getElementById('select-contracted-duration').value || 60),
-        pets: groupPets.map(p => p.name)
-      };
-
-      // Atualizar UI para Estado Ativo
-      heroIdle.style.display = 'none';
-      heroActive.style.display = 'block';
-      walkOptions.style.display = 'block';
-      selectGroup.disabled = true;
-
-      btnToggle.textContent = '⏹️ Concluir Passeio';
-      btnToggle.classList.remove('btn-primary');
-      btnToggle.classList.add('btn-danger');
-
-      // Chips dos Pets
-      chipsContainer.innerHTML = (groupPets.length > 0 ? groupPets : [{ name: group.name }]).map(p => `<span class="chip">🐶 ${p.name}</span>`).join('');
-
-      // Iniciar Cronômetro em Tempo Real
-      startTimerDisplay(state.activeSession.startTime, timerText);
-    } else {
-      // CONCLUIR PASSEIO
-      clearInterval(state.timerInterval);
-
-      const endTime = new Date().toISOString();
-      const notesArray = [];
-
-      if (document.getElementById('note-pee').checked) notesArray.push('Fez xixi 💦');
-      if (document.getElementById('note-poop').checked) notesArray.push('Fez cocô 💩');
-      if (document.getElementById('note-water').checked) notesArray.push('Bebeu água 💧');
-      if (document.getElementById('note-tired').checked) notesArray.push('Cansou/brincou 😴');
-
-      const customNotes = document.getElementById('walk-notes-text').value.trim();
-      if (customNotes) notesArray.push(customNotes);
-
-      const group = state.groups.find(g => g.id === state.activeSession.groupId);
-      const sessionCost = calculateSessionCost(group, state.activeSession.contractedDuration);
-
-      const completedSession = {
-        ...state.activeSession,
-        endTime,
-        date: state.activeSession.startTime,
-        cost: sessionCost,
-        notes: notesArray.join(' | ')
-      };
-
-      // Salvar no IndexedDB
-      await StorageService.saveSession(completedSession);
-      state.sessions.push(completedSession);
-
-      // Resetar UI
-      state.activeSession = null;
-      heroIdle.style.display = 'block';
-      heroActive.style.display = 'none';
-      walkOptions.style.display = 'none';
-      selectGroup.disabled = false;
-
-      // Limpar campos
-      document.getElementById('note-pee').checked = false;
-      document.getElementById('note-poop').checked = false;
-      document.getElementById('note-water').checked = false;
-      document.getElementById('note-tired').checked = false;
-      document.getElementById('walk-notes-text').value = '';
-
-      btnToggle.textContent = '🚀 Iniciar Passeio';
-      btnToggle.classList.remove('btn-danger');
-      btnToggle.classList.add('btn-primary');
-
-      alert('🎉 Passeio registrado com sucesso!');
-      renderDailyView();
+    } catch (err) {
+      console.error('Erro ao processar passeio:', err);
+      alert(`Ocorreu um erro ao salvar o passeio: ${err.message}`);
     }
   });
 }
@@ -315,40 +772,159 @@ function startTimerDisplay(startTimeIso, element) {
     const mins = Math.floor((diffMs / (1000 * 60)) % 60);
     const hrs = Math.floor(diffMs / (1000 * 60 * 60));
 
-    element.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (element) {
+      element.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
   }
 
   update();
   state.timerInterval = setInterval(update, 1000);
 }
 
+function updateDurationSelectorForGroup(groupId, selectElementId) {
+  const select = document.getElementById(selectElementId);
+  if (!select) return;
+
+  const group = state.groups.find(g => g.id === groupId);
+  if (!group) {
+    select.innerHTML = '<option value="30">30 Minutos</option><option value="60" selected>60 Minutos</option>';
+    select.disabled = false;
+    return;
+  }
+
+  const rate30 = Number(group.rate30min || 0);
+  const rate60 = Number(group.rate60min || 0);
+
+  if (rate30 > 0 && rate60 <= 0) {
+    // Apenas 30 minutos disponível
+    select.innerHTML = `<option value="30" selected>30 Minutos (Fixo: R$ ${rate30.toFixed(2).replace('.', ',')})</option>`;
+    select.disabled = true;
+  } else if (rate60 > 0 && rate30 <= 0) {
+    // Apenas 60 minutos disponível
+    select.innerHTML = `<option value="60" selected>60 Minutos (Fixo: R$ ${rate60.toFixed(2).replace('.', ',')})</option>`;
+    select.disabled = true;
+  } else {
+    // Ambos disponíveis
+    const label30 = rate30 > 0 ? `30 Minutos (R$ ${rate30.toFixed(2).replace('.', ',')})` : '30 Minutos';
+    const label60 = rate60 > 0 ? `60 Minutos (R$ ${rate60.toFixed(2).replace('.', ',')})` : '60 Minutos';
+    select.innerHTML = `<option value="30">${label30}</option><option value="60" selected>${label60}</option>`;
+    select.disabled = false;
+  }
+}
+
 function updateGroupDropdown() {
   const select = document.getElementById('select-walk-group');
   if (!select) return;
   const sortedGroups = [...state.groups].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+  
   select.innerHTML = '<option value="">-- Selecione o Grupo --</option>' +
-    sortedGroups.map(g => `<option value="${g.id}">${g.name} (R$ ${Number(g.rate30min).toFixed(2).replace('.', ',')}/30m - R$ ${Number(g.rate60min).toFixed(2).replace('.', ',')}/60m)</option>`).join('');
+    sortedGroups.map(g => {
+      const r30 = Number(g.rate30min || 0);
+      const r60 = Number(g.rate60min || 0);
+      let priceInfo = '';
+      if (r30 > 0 && r60 > 0) {
+        priceInfo = ` (30m: R$ ${r30.toFixed(2).replace('.', ',')} / 60m: R$ ${r60.toFixed(2).replace('.', ',')})`;
+      } else if (r30 > 0) {
+        priceInfo = ` (30m: R$ ${r30.toFixed(2).replace('.', ',')})`;
+      } else if (r60 > 0) {
+        priceInfo = ` (60m: R$ ${r60.toFixed(2).replace('.', ',')})`;
+      }
+      return `<option value="${g.id}">${g.name}${priceInfo}</option>`;
+    }).join('');
+
+  if (select.value) {
+    updateDurationSelectorForGroup(select.value, 'select-contracted-duration');
+  }
 }
 
+// -------------------------------------------------------------
 // CONTROLADOR DA VIEW DIÁRIA
+// -------------------------------------------------------------
 function setupDailyView() {
   const dateInput = document.getElementById('filter-daily-date');
   if (dateInput) {
     dateInput.value = new Date().toISOString().substring(0, 10);
     dateInput.addEventListener('change', renderDailyView);
   }
+
+  // Botões de navegação rápida de data
+  const btnPrev = document.getElementById('btn-date-prev');
+  const btnToday = document.getElementById('btn-date-today');
+  const btnNext = document.getElementById('btn-date-next');
+
+  function changeDateOffset(days) {
+    if (!dateInput) return;
+    const current = new Date(dateInput.value + 'T12:00:00');
+    current.setDate(current.getDate() + days);
+    dateInput.value = current.toISOString().substring(0, 10);
+    renderDailyView();
+  }
+
+  if (btnPrev) btnPrev.addEventListener('click', () => changeDateOffset(-1));
+  if (btnNext) btnNext.addEventListener('click', () => changeDateOffset(1));
+  if (btnToday) btnToday.addEventListener('click', () => {
+    if (dateInput) {
+      dateInput.value = new Date().toISOString().substring(0, 10);
+      renderDailyView();
+    }
+  });
+
+  const listEl = document.getElementById('daily-sessions-list');
+  if (listEl) {
+    listEl.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-action="edit-session"]');
+      const btnDel = e.target.closest('[data-action="delete-session"]');
+      const photoThumb = e.target.closest('[data-action="view-photo"]');
+
+      if (photoThumb) {
+        const photoUrl = decodeURIComponent(photoThumb.dataset.photo);
+        if (window.openPhotoViewer) window.openPhotoViewer(photoUrl);
+      }
+
+      if (btnEdit) {
+        const id = btnEdit.dataset.id;
+        const session = state.sessions.find(s => s.id === id);
+        if (session) openManualWalkModal(session);
+      }
+
+      if (btnDel) {
+        const id = btnDel.dataset.id;
+        if (confirm('Deseja realmente excluir este registro de passeio?')) {
+          await StorageService.deleteSession(id);
+          state.sessions = state.sessions.filter(s => s.id !== id);
+          renderDailyView();
+          renderInvoiceView();
+          await markPendingChanges();
+        }
+      }
+    });
+  }
 }
 
 function renderDailyView() {
   const dateInput = document.getElementById('filter-daily-date');
   const targetDateStr = dateInput ? dateInput.value : new Date().toISOString().substring(0, 10);
+  const targetMonthStr = targetDateStr.substring(0, 7); // YYYY-MM
   const listEl = document.getElementById('daily-sessions-list');
   const countEl = document.getElementById('stat-daily-count');
+  const monthCountEl = document.getElementById('stat-monthly-count');
+  const monthTitleEl = document.getElementById('stat-month-title');
   const timeEl = document.getElementById('stat-daily-time');
 
   if (!listEl) return;
 
+  // Filtrar sessões do dia e do mês
   const daySessions = state.sessions.filter(s => s.date && s.date.substring(0, 10) === targetDateStr);
+  const monthSessions = state.sessions.filter(s => s.date && s.date.substring(0, 7) === targetMonthStr);
+
+  // Nome do Mês Formatado
+  const [year, month] = targetMonthStr.split('-');
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const monthLabel = monthNames[parseInt(month, 10) - 1] || month;
+
+  if (monthTitleEl) monthTitleEl.textContent = `No Mês (${monthLabel})`;
+  if (countEl) countEl.textContent = daySessions.length;
+  if (monthCountEl) monthCountEl.textContent = monthSessions.length;
 
   let totalSeconds = 0;
   daySessions.forEach(s => {
@@ -361,49 +937,47 @@ function renderDailyView() {
 
   const hrs = Math.floor(totalSeconds / 3600);
   const mins = Math.floor((totalSeconds % 3600) / 60);
-
-  if (countEl) countEl.textContent = daySessions.length;
   if (timeEl) timeEl.textContent = `${hrs}h ${mins}m`;
 
   if (daySessions.length === 0) {
-    listEl.innerHTML = '<li style="text-align: center; color: var(--text-muted); padding: 20px 0;">Nenhum passeio registrado nesta data.</li>';
+    listEl.innerHTML = '<li style="text-align: center; color: var(--text-muted); padding: 24px 0;">Nenhum passeio registrado nesta data.</li>';
     return;
   }
 
   listEl.innerHTML = daySessions.map(s => {
     const startFormatted = s.startTime ? new Date(s.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
     const endFormatted = s.endTime ? new Date(s.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+    const hasKm = (s.kmStart !== null && s.kmStart !== undefined) || (s.kmEnd !== null && s.kmEnd !== undefined);
+    const kmHtml = hasKm
+      ? `<div style="margin-top: 4px;"><span class="km-badge">🚗 Km: ${s.kmStart ?? '-'} → ${s.kmEnd ?? '-'} ${s.kmTotal ? `(${s.kmTotal} km)` : ''}</span></div>`
+      : '';
+
+    const photoHtml = s.photo
+      ? `<img src="${s.photo}" class="photo-thumb" data-action="view-photo" data-photo="${encodeURIComponent(s.photo)}" title="Toque para ampliar foto">`
+      : '';
+
     return `
-      <li class="item-row">
-        <div>
-          <div style="font-weight: 700;">🐕 ${s.groupName || 'Grupo'}</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">
-            🕒 ${startFormatted} às ${endFormatted} (${s.contractedDuration}m contratados) - <strong>R$ ${s.cost ? s.cost.toFixed(2) : '0.00'}</strong>
+      <li class="item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center; flex: 1;">
+          ${photoHtml}
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 0.95rem;">🐕 ${s.groupName || 'Grupo'}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+              🕒 ${startFormatted} às ${endFormatted} (${s.contractedDuration || 60}m) • <strong style="color: var(--primary);">R$ ${s.cost ? Number(s.cost).toFixed(2).replace('.', ',') : '0,00'}</strong>
+            </div>
+            ${kmHtml}
+            ${s.notes ? `<div style="font-size: 0.8rem; color: var(--text-main); margin-top: 4px; background: rgba(0,0,0,0.03); padding: 4px 8px; border-radius: 4px;">📝 ${s.notes}</div>` : ''}
           </div>
-          ${s.notes ? `<div style="font-size: 0.8rem; color: var(--primary); margin-top: 2px;">📝 ${s.notes}</div>` : ''}
         </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn btn-outline btn-sm" onclick="window.editSessionHandler('${s.id}')">✏️ Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="window.deleteSessionHandler('${s.id}')">Excluir</button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn btn-outline btn-sm" data-action="edit-session" data-id="${s.id}" title="Editar Passeio">✏️</button>
+          <button class="btn btn-danger btn-sm" data-action="delete-session" data-id="${s.id}" title="Excluir Passeio">🗑️</button>
         </div>
       </li>
     `;
   }).join('');
 }
-
-window.deleteSessionHandler = async (id) => {
-  if (confirm('Deseja excluir este registro de passeio?')) {
-    await StorageService.deleteSession(id);
-    state.sessions = state.sessions.filter(s => s.id !== id);
-    renderDailyView();
-  }
-};
-
-window.editSessionHandler = (id) => {
-  const session = state.sessions.find(s => s.id === id);
-  if (!session) return;
-  openManualWalkModal(session);
-};
 
 function openManualWalkModal(session = null) {
   const modal = document.getElementById('modal-manual-walk');
@@ -413,6 +987,8 @@ function openManualWalkModal(session = null) {
   const startInput = document.getElementById('manual-walk-start');
   const endInput = document.getElementById('manual-walk-end');
   const durationSelect = document.getElementById('manual-walk-duration');
+  const kmStartInput = document.getElementById('manual-walk-km-start');
+  const kmEndInput = document.getElementById('manual-walk-km-end');
   const notesInput = document.getElementById('manual-walk-notes');
   const idInput = document.getElementById('manual-walk-id');
 
@@ -420,30 +996,42 @@ function openManualWalkModal(session = null) {
   groupSelect.innerHTML = '<option value="">-- Selecione o Grupo --</option>' +
     state.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
 
+  groupSelect.onchange = () => {
+    updateDurationSelectorForGroup(groupSelect.value, 'manual-walk-duration');
+  };
+
   if (session) {
     titleEl.textContent = '✏️ Editar Passeio';
     idInput.value = session.id;
     groupSelect.value = session.groupId;
+    updateDurationSelectorForGroup(session.groupId, 'manual-walk-duration');
     dateInput.value = session.date ? session.date.substring(0, 10) : new Date().toISOString().substring(0, 10);
     startInput.value = session.startTime ? new Date(session.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '10:00';
     endInput.value = session.endTime ? new Date(session.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '11:00';
     durationSelect.value = session.contractedDuration || 60;
+    if (kmStartInput) kmStartInput.value = (session.kmStart !== null && session.kmStart !== undefined) ? session.kmStart : '';
+    if (kmEndInput) kmEndInput.value = (session.kmEnd !== null && session.kmEnd !== undefined) ? session.kmEnd : '';
     notesInput.value = session.notes || '';
   } else {
     titleEl.textContent = '📝 Lançar Passeio Manual';
     idInput.value = '';
-    groupSelect.value = state.groups.length > 0 ? state.groups[0].id : '';
+    const initialGroupId = state.groups.length > 0 ? state.groups[0].id : '';
+    groupSelect.value = initialGroupId;
+    updateDurationSelectorForGroup(initialGroupId, 'manual-walk-duration');
     dateInput.value = document.getElementById('filter-daily-date')?.value || new Date().toISOString().substring(0, 10);
     startInput.value = '10:00';
     endInput.value = '11:00';
-    durationSelect.value = 60;
+    if (kmStartInput) kmStartInput.value = '';
+    if (kmEndInput) kmEndInput.value = '';
     notesInput.value = '';
   }
 
   modal.classList.add('active');
 }
 
+// -------------------------------------------------------------
 // SETUP DO MODAL DE PASSEIO MANUAL/EDIÇÃO
+// -------------------------------------------------------------
 function setupManualWalkModal() {
   const btnOpen = document.getElementById('btn-open-manual-walk');
   const btnOpenHome = document.getElementById('btn-open-manual-walk-home');
@@ -458,56 +1046,91 @@ function setupManualWalkModal() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const id = document.getElementById('manual-walk-id').value;
-      const groupId = document.getElementById('manual-walk-group').value;
-      const dateStr = document.getElementById('manual-walk-date').value;
-      const startTimeStr = document.getElementById('manual-walk-start').value;
-      const endTimeStr = document.getElementById('manual-walk-end').value;
-      const duration = Number(document.getElementById('manual-walk-duration').value || 60);
-      const notes = document.getElementById('manual-walk-notes').value.trim();
+      try {
+        const id = document.getElementById('manual-walk-id')?.value;
+        const groupId = document.getElementById('manual-walk-group')?.value;
+        const dateStr = document.getElementById('manual-walk-date')?.value || new Date().toISOString().substring(0, 10);
+        const startTimeStr = document.getElementById('manual-walk-start')?.value || '10:00';
+        const endTimeStr = document.getElementById('manual-walk-end')?.value || '11:00';
+        const duration = Number(document.getElementById('manual-walk-duration')?.value || 60);
+        const notes = document.getElementById('manual-walk-notes')?.value.trim() || '';
 
-      const group = state.groups.find(g => g.id === groupId);
-      const cost = calculateSessionCost(group, duration);
+        const kmStartVal = document.getElementById('manual-walk-km-start')?.value.trim();
+        const kmEndVal = document.getElementById('manual-walk-km-end')?.value.trim();
+        const kmStart = kmStartVal !== '' && !isNaN(kmStartVal) ? Number(kmStartVal) : null;
+        const kmEnd = kmEndVal !== '' && !isNaN(kmEndVal) ? Number(kmEndVal) : null;
+        const kmTotal = kmStart !== null && kmEnd !== null && kmEnd >= kmStart ? Number((kmEnd - kmStart).toFixed(1)) : null;
 
-      const startTimeDate = new Date(`${dateStr}T${startTimeStr}`);
-      const endTimeDate = new Date(`${dateStr}T${endTimeStr}`);
+        const group = state.groups.find(g => g.id === groupId);
+        let cost = 0;
+        try {
+          cost = calculateSessionCost(group, duration);
+        } catch (e) {
+          cost = (group && (duration === 30 ? group.rate30min : group.rate60min)) || 60;
+        }
 
-      const sessionData = {
-        id: id || `sess-${Date.now()}`,
-        groupId,
-        groupName: group ? group.name : 'Grupo',
-        contractedDuration: duration,
-        cost,
-        date: startTimeDate.toISOString(),
-        startTime: startTimeDate.toISOString(),
-        endTime: endTimeDate.toISOString(),
-        notes
-      };
+        let startTimeIso = new Date().toISOString();
+        let endTimeIso = new Date().toISOString();
+        try {
+          const sDate = new Date(`${dateStr}T${startTimeStr}`);
+          if (!isNaN(sDate.getTime())) startTimeIso = sDate.toISOString();
+          const eDate = new Date(`${dateStr}T${endTimeStr}`);
+          if (!isNaN(eDate.getTime())) endTimeIso = eDate.toISOString();
+        } catch (errDate) {
+          console.warn('Erro ao formatar data do passeio:', errDate);
+        }
 
-      await StorageService.saveSession(sessionData);
+        const existingSession = id ? state.sessions.find(s => s.id === id) : null;
 
-      if (id) {
-        const idx = state.sessions.findIndex(s => s.id === id);
-        if (idx !== -1) state.sessions[idx] = sessionData;
-      } else {
-        state.sessions.push(sessionData);
+        const sessionData = {
+          id: id || `sess-${Date.now()}`,
+          groupId,
+          groupName: group ? group.name : 'Grupo',
+          contractedDuration: duration,
+          cost: Number(cost) || 0,
+          date: startTimeIso,
+          startTime: startTimeIso,
+          endTime: endTimeIso,
+          notes,
+          kmStart,
+          kmEnd,
+          kmTotal,
+          photo: existingSession ? existingSession.photo : null
+        };
+
+        await StorageService.saveSession(sessionData);
+
+        if (id) {
+          const idx = state.sessions.findIndex(s => s.id === id);
+          if (idx !== -1) state.sessions[idx] = sessionData;
+          else state.sessions.push(sessionData);
+        } else {
+          state.sessions.push(sessionData);
+        }
+
+        modal.classList.remove('active');
+        renderDailyView();
+        renderInvoiceView();
+        await markPendingChanges();
+        alert('✅ Passeio salvo com sucesso!');
+      } catch (err) {
+        console.error('Erro ao salvar passeio manual:', err);
+        alert(`Erro ao salvar passeio: ${err.message}`);
       }
-
-      modal.classList.remove('active');
-      renderDailyView();
-      renderInvoiceView();
-      alert('Passeio salvo com sucesso!');
     });
   }
 }
 
+// -------------------------------------------------------------
 // CONTROLADOR DE TUTORES E GRUPOS
+// -------------------------------------------------------------
 function setupTutorManager() {
   const btnOpen = document.getElementById('btn-open-tutor-modal');
   const btnClose = document.getElementById('btn-close-tutor-modal');
   const modal = document.getElementById('modal-tutor');
   const form = document.getElementById('form-tutor');
   const modalTitle = document.getElementById('modal-tutor-title');
+  const container = document.getElementById('tutors-tree-list');
 
   if (btnOpen) {
     btnOpen.addEventListener('click', () => {
@@ -521,128 +1144,155 @@ function setupTutorManager() {
 
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
 
-  window.editTutorHandler = (tutorId) => {
-    const tutor = state.tutors.find(t => t.id === tutorId);
-    if (!tutor) return;
+  // Delegação de eventos para Editar e Excluir Tutor
+  if (container) {
+    container.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-action="edit-tutor"]');
+      const btnDel = e.target.closest('[data-action="delete-tutor"]');
 
-    const group = state.groups.find(g => g.tutorId === tutorId);
+      if (btnEdit) {
+        const tutorId = btnEdit.dataset.id;
+        const tutor = state.tutors.find(t => t.id === tutorId);
+        if (!tutor) return;
 
-    document.getElementById('tutor-id').value = tutor.id;
-    document.getElementById('tutor-group-id').value = group ? group.id : '';
-    document.getElementById('tutor-name').value = tutor.name || '';
-    document.getElementById('tutor-phone').value = tutor.phone || '';
-    document.getElementById('tutor-email').value = tutor.email || '';
+        const group = state.groups.find(g => g.tutorId === tutorId);
 
-    document.getElementById('group-name').value = group ? group.name : '';
-    document.getElementById('group-rate-30').value = group ? group.rate30min : 40;
-    document.getElementById('group-rate-60').value = group ? group.rate60min : 70;
+        document.getElementById('tutor-id').value = tutor.id;
+        document.getElementById('tutor-group-id').value = group ? group.id : '';
+        document.getElementById('tutor-name').value = tutor.name || '';
+        document.getElementById('tutor-phone').value = tutor.phone || '';
+        document.getElementById('tutor-email').value = tutor.email || '';
 
-    if (modalTitle) modalTitle.textContent = '✏️ Editar Tutor & Grupo';
-    modal.classList.add('active');
-  };
+        document.getElementById('group-name').value = group ? group.name : '';
+        document.getElementById('group-rate-30').value = group ? group.rate30min : 40;
+        document.getElementById('group-rate-60').value = group ? group.rate60min : 70;
 
-  window.deleteTutorHandler = async (tutorId) => {
-    const tutor = state.tutors.find(t => t.id === tutorId);
-    if (!tutor) return;
+        if (modalTitle) modalTitle.textContent = '✏️ Editar Tutor & Grupo';
+        modal.classList.add('active');
+      }
 
-    if (!confirm(`Tem certeza que deseja excluir o tutor "${tutor.name}" e seus grupos de pets?`)) {
-      return;
-    }
+      if (btnDel) {
+        const tutorId = btnDel.dataset.id;
+        const tutor = state.tutors.find(t => t.id === tutorId);
+        if (!tutor) return;
 
-    await StorageService.deleteTutor(tutorId);
-    state.tutors = state.tutors.filter(t => t.id !== tutorId);
+        if (!confirm(`Tem certeza que deseja excluir o tutor "${tutor.name}" e seus grupos de pets?`)) {
+          return;
+        }
 
-    const relatedGroups = state.groups.filter(g => g.tutorId === tutorId);
-    for (const g of relatedGroups) {
-      await StorageService.deleteGroup(g.id);
-    }
-    state.groups = state.groups.filter(g => g.tutorId !== tutorId);
+        try {
+          await StorageService.deleteTutor(tutorId);
+          state.tutors = state.tutors.filter(t => t.id !== tutorId);
 
-    updateGroupDropdown();
-    renderTutorsList();
-    updateInvoiceTutorDropdown();
-    alert(`Tutor "${tutor.name}" excluído com sucesso!`);
-  };
+          const relatedGroups = state.groups.filter(g => g.tutorId === tutorId);
+          for (const g of relatedGroups) {
+            await StorageService.deleteGroup(g.id);
+            const relatedPets = state.pets.filter(p => p.groupId === g.id);
+            for (const p of relatedPets) {
+              await StorageService.deletePet(p.id);
+            }
+          }
+          state.groups = state.groups.filter(g => g.tutorId !== tutorId);
+          state.pets = state.pets.filter(p => !relatedGroups.some(g => g.id === p.groupId));
+
+          updateGroupDropdown();
+          renderTutorsList();
+          updateInvoiceTutorDropdown();
+          await markPendingChanges();
+          alert(`✅ Tutor "${tutor.name}" e seus grupos foram excluídos com sucesso!`);
+        } catch (err) {
+          alert(`Erro ao excluir tutor: ${err.message}`);
+        }
+      }
+    });
+  }
 
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const tutorId = document.getElementById('tutor-id').value;
-      const groupId = document.getElementById('tutor-group-id').value;
+      try {
+        const tutorId = document.getElementById('tutor-id').value;
+        const groupId = document.getElementById('tutor-group-id').value;
 
-      const tutorName = document.getElementById('tutor-name').value.trim();
-      const tutorPhone = document.getElementById('tutor-phone').value.trim();
-      const tutorEmail = document.getElementById('tutor-email').value.trim();
-      const groupName = document.getElementById('group-name').value.trim();
-      const rate30 = Number(document.getElementById('group-rate-30').value || 40);
-      const rate60 = Number(document.getElementById('group-rate-60').value || 70);
+        const tutorName = document.getElementById('tutor-name').value.trim();
+        const tutorPhone = document.getElementById('tutor-phone').value.trim();
+        const tutorEmail = document.getElementById('tutor-email').value.trim();
+        const groupName = document.getElementById('group-name').value.trim();
+        const rate30 = Number(document.getElementById('group-rate-30').value || 40);
+        const rate60 = Number(document.getElementById('group-rate-60').value || 70);
 
-      if (tutorId) {
-        // MODO EDIÇÃO
-        const existingTutor = state.tutors.find(t => t.id === tutorId);
-        if (existingTutor) {
-          existingTutor.name = tutorName;
-          existingTutor.phone = tutorPhone;
-          existingTutor.email = tutorEmail;
-          await StorageService.saveTutor(existingTutor);
-        }
-
-        if (groupId) {
-          const existingGroup = state.groups.find(g => g.id === groupId);
-          if (existingGroup) {
-            existingGroup.name = groupName;
-            existingGroup.rate30min = rate30;
-            existingGroup.rate60min = rate60;
-            await StorageService.saveGroup(existingGroup);
+        if (tutorId) {
+          // MODO EDIÇÃO
+          const existingTutor = state.tutors.find(t => t.id === tutorId);
+          if (existingTutor) {
+            existingTutor.name = tutorName;
+            existingTutor.phone = tutorPhone;
+            existingTutor.email = tutorEmail;
+            await StorageService.saveTutor(existingTutor);
           }
-        } else if (groupName) {
+
+          if (groupId) {
+            const existingGroup = state.groups.find(g => g.id === groupId);
+            if (existingGroup) {
+              existingGroup.name = groupName;
+              existingGroup.rate30min = rate30;
+              existingGroup.rate60min = rate60;
+              await StorageService.saveGroup(existingGroup);
+            }
+          } else if (groupName) {
+            const newGroup = {
+              id: `grp-${Date.now()}`,
+              tutorId,
+              name: groupName,
+              rate30min: rate30,
+              rate60min: rate60
+            };
+            await StorageService.saveGroup(newGroup);
+            state.groups.push(newGroup);
+          }
+
+          modal.classList.remove('active');
+          form.reset();
+          updateGroupDropdown();
+          renderTutorsList();
+          updateInvoiceTutorDropdown();
+          await markPendingChanges();
+          alert('✅ Tutor atualizado com sucesso!');
+        } else {
+          // MODO NOVO
+          const newTutor = {
+            id: `tut-${Date.now()}`,
+            name: tutorName,
+            phone: tutorPhone,
+            email: tutorEmail
+          };
+
           const newGroup = {
             id: `grp-${Date.now()}`,
-            tutorId,
+            tutorId: newTutor.id,
             name: groupName,
             rate30min: rate30,
             rate60min: rate60
           };
+
+          await StorageService.saveTutor(newTutor);
           await StorageService.saveGroup(newGroup);
+
+          state.tutors.push(newTutor);
           state.groups.push(newGroup);
+
+          modal.classList.remove('active');
+          form.reset();
+
+          updateGroupDropdown();
+          renderTutorsList();
+          updateInvoiceTutorDropdown();
+          await markPendingChanges();
+          alert('✅ Tutor e Grupo cadastrados com sucesso!');
         }
-
-        modal.classList.remove('active');
-        form.reset();
-        updateGroupDropdown();
-        renderTutorsList();
-        updateInvoiceTutorDropdown();
-        alert('Tutor atualizado com sucesso!');
-      } else {
-        // MODO NOVO
-        const newTutor = {
-          id: `tut-${Date.now()}`,
-          name: tutorName,
-          phone: tutorPhone,
-          email: tutorEmail
-        };
-
-        const newGroup = {
-          id: `grp-${Date.now()}`,
-          tutorId: newTutor.id,
-          name: groupName,
-          rate30min: rate30,
-          rate60min: rate60
-        };
-
-        await StorageService.saveTutor(newTutor);
-        await StorageService.saveGroup(newGroup);
-
-        state.tutors.push(newTutor);
-        state.groups.push(newGroup);
-
-        modal.classList.remove('active');
-        form.reset();
-
-        updateGroupDropdown();
-        renderTutorsList();
-        updateInvoiceTutorDropdown();
-        alert('Tutor e Grupo cadastrados com sucesso!');
+      } catch (err) {
+        console.error('Erro ao salvar tutor:', err);
+        alert(`Erro ao salvar tutor: ${err.message}`);
       }
     });
   }
@@ -653,7 +1303,7 @@ function renderTutorsList() {
   if (!container) return;
 
   if (state.tutors.length === 0) {
-    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px 0;">Nenhum tutor cadastrado ainda.</div>';
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 24px 0;">Nenhum tutor cadastrado ainda.</div>';
     return;
   }
 
@@ -663,23 +1313,23 @@ function renderTutorsList() {
     const tGroups = state.groups.filter(g => g.tutorId === t.id);
     return `
       <div style="background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
-        <!-- Cabeçalho do Tutor (Largura Total sem aperto) -->
+        <!-- Cabeçalho do Tutor -->
         <div>
-          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-main); word-break: break-word;">👤 ${t.name}</div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 2px; word-break: break-word;">
+          <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); word-break: break-word;">👤 ${t.name}</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 2px; word-break: break-word;">
             <span>📱 ${t.phone || 'Sem telefone'}</span>
             <span>✉️ ${t.email || 'Sem e-mail'}</span>
           </div>
         </div>
 
         <!-- Grupos de Passeio & Pets -->
-        <div style="margin-top: 12px;">
+        <div style="margin-top: 10px;">
           ${tGroups.length > 0 ? tGroups.map(g => `
-            <div style="background: var(--surface); padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; margin-top: 6px; border: 1px solid var(--border);">
-              <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+            <div style="background: var(--surface); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-top: 6px; border: 1px solid var(--border);">
+              <div style="font-weight: 700; color: var(--text-main); margin-bottom: 2px; display: flex; align-items: center; gap: 4px;">
                 <span>🐾</span> <span>${g.name}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; color: var(--primary); font-weight: 700; font-size: 0.85rem;">
+              <div style="display: flex; justify-content: space-between; color: var(--primary); font-weight: 700; font-size: 0.8rem;">
                 <span>30 min: R$ ${Number(g.rate30min).toFixed(2).replace('.', ',')}</span>
                 <span>60 min: R$ ${Number(g.rate60min).toFixed(2).replace('.', ',')}</span>
               </div>
@@ -688,11 +1338,11 @@ function renderTutorsList() {
         </div>
 
         <!-- Botões de Ação na Base do Card -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border);">
-          <button class="btn btn-outline btn-sm" onclick="window.editTutorHandler('${t.id}')" style="width: 100%; padding: 8px 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);">
+          <button class="btn btn-outline btn-sm" data-action="edit-tutor" data-id="${t.id}" style="width: 100%; padding: 6px 10px;">
             ✏️ Editar
           </button>
-          <button class="btn btn-danger btn-sm" onclick="window.deleteTutorHandler('${t.id}')" style="width: 100%; padding: 8px 12px;">
+          <button class="btn btn-danger btn-sm" data-action="delete-tutor" data-id="${t.id}" style="width: 100%; padding: 6px 10px;">
             🗑️ Excluir
           </button>
         </div>
@@ -701,7 +1351,9 @@ function renderTutorsList() {
   }).join('');
 }
 
+// -------------------------------------------------------------
 // CONTROLADOR DA VIEW DE INVOICE / FATURA
+// -------------------------------------------------------------
 function setupInvoiceManager() {
   const monthPicker = document.getElementById('invoice-month-picker');
   const tutorSelect = document.getElementById('invoice-tutor-select');
@@ -710,7 +1362,6 @@ function setupInvoiceManager() {
   const modalAdj = document.getElementById('modal-adjustment');
   const formAdj = document.getElementById('form-adjustment');
   const btnWa = document.getElementById('btn-share-whatsapp');
-  const btnN8n = document.getElementById('btn-send-n8n-email');
 
   if (monthPicker) {
     monthPicker.value = new Date().toISOString().substring(0, 7);
@@ -721,27 +1372,34 @@ function setupInvoiceManager() {
     tutorSelect.addEventListener('change', renderInvoiceView);
   }
 
-  if (btnAdj) btnAdj.addEventListener('click', () => modalAdj.classList.add('active'));
+  if (btnAdj) {
+    btnAdj.addEventListener('click', () => {
+      if (!tutorSelect.value) {
+        alert('Selecione um tutor primeiro para lançar ajuste.');
+        return;
+      }
+      formAdj.reset();
+      modalAdj.classList.add('active');
+    });
+  }
+
   if (btnCloseAdj) btnCloseAdj.addEventListener('click', () => modalAdj.classList.remove('active'));
 
   if (formAdj) {
     formAdj.addEventListener('submit', async (e) => {
       e.preventDefault();
       const tutorId = tutorSelect.value;
-      const monthYearKey = monthPicker.value;
-      if (!tutorId) return;
-
       const type = document.getElementById('adj-type').value;
       const amount = Number(document.getElementById('adj-amount').value || 0);
-      const description = document.getElementById('adj-desc').value.trim();
+      const desc = document.getElementById('adj-desc').value.trim();
 
       const newAdj = {
         id: `adj-${Date.now()}`,
         tutorId,
-        date: `${monthYearKey}-01T00:00:00Z`,
         type,
         amount,
-        description
+        description: desc,
+        date: new Date().toISOString()
       };
 
       await StorageService.saveAdjustment(newAdj);
@@ -750,6 +1408,7 @@ function setupInvoiceManager() {
       modalAdj.classList.remove('active');
       formAdj.reset();
       renderInvoiceView();
+      await markPendingChanges();
     });
   }
 
@@ -759,20 +1418,8 @@ function setupInvoiceManager() {
       if (!invoice) return;
       const message = formatWhatsAppSummary(invoice);
       const encoded = encodeURIComponent(message);
-      const phoneDigits = (invoice.tutorPhone || '').replace(/\D/g, '');
-      const waUrl = phoneDigits ? `https://wa.me/55${phoneDigits}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-      window.open(waUrl, '_blank');
-    });
-  }
-
-  if (btnWa) {
-    btnWa.addEventListener('click', () => {
-      const invoice = getCalculatedInvoice();
-      if (!invoice) return;
-      const message = formatWhatsAppSummary(invoice);
-      const encoded = encodeURIComponent(message);
-      const phoneDigits = (invoice.tutorPhone || '').replace(/\D/g, '');
-      const waUrl = phoneDigits ? `https://wa.me/55${phoneDigits}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+      const formattedPhone = formatWhatsAppPhone(invoice.tutorPhone || '');
+      const waUrl = formattedPhone ? `https://wa.me/${formattedPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
       window.open(waUrl, '_blank');
     });
   }
@@ -794,7 +1441,6 @@ function openEmailPreviewModal(invoice) {
   const modal = document.getElementById('modal-email-preview');
   const frame = document.getElementById('email-preview-frame');
   const customNoteInput = document.getElementById('preview-custom-note');
-
   if (!modal || !frame) return;
 
   function updatePreview() {
@@ -824,6 +1470,12 @@ function setupEmailPreviewModal() {
     btnSendGoogle.addEventListener('click', async () => {
       const invoice = getCalculatedInvoice();
       if (!invoice) return;
+
+      if (!navigator.onLine) {
+        alert('Você está offline no momento. Conecte-se à internet para enviar o e-mail via Google Apps Script ou use a opção de WhatsApp.');
+        return;
+      }
+
       if (!state.settings.googleScriptUrl) {
         alert('Por favor, configure a URL do Google Apps Script na aba Ajustes.');
         return;
@@ -903,27 +1555,187 @@ function renderInvoiceView() {
   document.getElementById('inv-total-cost').textContent = `R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}`;
 }
 
-// CONTROLADOR DE CONFIGURAÇÕES
+// -------------------------------------------------------------
+// CONTROLADOR DE CONFIGURAÇÕES & AUTO-BACKUP
+// -------------------------------------------------------------
+async function markPendingChanges() {
+  state.settings.pendingSync = true;
+  await StorageService.saveSetting('pendingSync', true);
+  updateSyncStatusBadge();
+  triggerAutoSyncIfEligible('data_mutation');
+}
+
+async function clearPendingChanges(timestamp) {
+  state.settings.pendingSync = false;
+  state.settings.lastSyncTime = timestamp;
+  await StorageService.saveSetting('pendingSync', false);
+  await StorageService.saveSetting('lastSyncTime', timestamp);
+  updateSyncStatusBadge();
+}
+
+function updateSyncStatusBadge() {
+  const badgeText = document.getElementById('sync-status-text');
+  if (!badgeText) return;
+
+  if (!state.settings.googleScriptUrl) {
+    badgeText.textContent = 'Google Apps Script não configurado';
+    badgeText.style.color = 'var(--text-muted)';
+    return;
+  }
+
+  if (state.settings.pendingSync) {
+    badgeText.textContent = '⚠️ Alterações pendentes de backup (aguardando Wi-Fi)';
+    badgeText.style.color = 'var(--warning)';
+  } else if (state.settings.lastSyncTime) {
+    const d = new Date(state.settings.lastSyncTime);
+    const timeFormatted = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateFormatted = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    badgeText.textContent = `✅ Sincronizado no Drive (${dateFormatted} às ${timeFormatted})`;
+    badgeText.style.color = 'var(--success)';
+  } else {
+    badgeText.textContent = 'Pronto para sincronização';
+    badgeText.style.color = 'var(--text-muted)';
+  }
+}
+
+function isWifiConnection() {
+  if (!navigator.onLine) return false;
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    if (conn.type) {
+      return conn.type === 'wifi' || conn.type === 'ethernet';
+    }
+    if (conn.saveData) return false;
+  }
+  // No iOS / Safari onde navigator.connection não expõe o tipo
+  return true;
+}
+
+let isAutoSyncRunning = false;
+async function triggerAutoSyncIfEligible(reason = 'auto') {
+  if (isAutoSyncRunning) return;
+  if (state.settings.autoBackupEnabled === false) return;
+  if (!state.settings.googleScriptUrl) return;
+  if (!state.settings.pendingSync) return;
+  if (!isWifiConnection()) return;
+
+  try {
+    isAutoSyncRunning = true;
+    const badgeText = document.getElementById('sync-status-text');
+    if (badgeText) badgeText.textContent = '☁️ Sincronizando com Google Drive...';
+
+    const payload = {
+      tutors: state.tutors,
+      groups: state.groups,
+      pets: state.pets,
+      sessions: state.sessions,
+      adjustments: state.adjustments
+    };
+
+    const res = await syncBackupToGoogle(state.settings.googleScriptUrl, payload);
+    if (res && res.success) {
+      await clearPendingChanges(new Date().toISOString());
+      console.log(`[AutoSync] Backup realizado com sucesso (${reason})`);
+    }
+  } catch (err) {
+    console.warn(`[AutoSync] Falha na sincronização automática (${reason}):`, err);
+    updateSyncStatusBadge();
+  } finally {
+    isAutoSyncRunning = false;
+  }
+}
+
+function updatePinSettingsBadge() {
+  const badge = document.getElementById('badge-pin-status');
+  const info = document.getElementById('pin-status-info');
+  const btnRemove = document.getElementById('btn-remove-pin');
+  const inputPin = document.getElementById('input-setting-pin');
+
+  if (!badge) return;
+
+  if (state.settings.pinHash) {
+    badge.textContent = '🔒 PIN Ativo';
+    badge.style.background = 'var(--primary-light)';
+    badge.style.color = 'var(--primary)';
+    if (btnRemove) btnRemove.style.display = 'inline-block';
+    if (inputPin) inputPin.placeholder = '•••• (PIN ativo - digite novo para alterar)';
+    if (info) {
+      info.innerHTML = '✅ <strong>PIN de 4 dígitos cadastrado e ativo.</strong> Para alterar, digite 4 novos números acima e clique em Salvar.';
+    }
+  } else {
+    badge.textContent = '⚠️ Sem PIN';
+    badge.style.background = 'rgba(234, 179, 8, 0.15)';
+    badge.style.color = '#ca8a04';
+    if (btnRemove) btnRemove.style.display = 'none';
+    if (inputPin) inputPin.placeholder = 'Ex: 1234';
+    if (info) {
+      info.innerHTML = 'Nenhum PIN cadastrado no momento. Digite 4 números para ativar a trava de segurança.';
+    }
+  }
+}
+
 function setupSettingsController() {
   const btnSavePin = document.getElementById('btn-save-pin');
+  const btnRemovePin = document.getElementById('btn-remove-pin');
   const btnRegisterBio = document.getElementById('btn-register-bio');
   const btnSaveSettings = document.getElementById('btn-save-settings');
   const btnSyncGoogle = document.getElementById('btn-sync-google-now');
   const btnPullGoogle = document.getElementById('btn-pull-google-now');
   const btnExport = document.getElementById('btn-export-json');
+  const toggleAutoBackup = document.getElementById('toggle-auto-backup');
+
+  const btnToggleSettingPin = document.getElementById('btn-toggle-setting-pin-visibility');
+  const inputSettingPin = document.getElementById('input-setting-pin');
+  if (btnToggleSettingPin && inputSettingPin) {
+    btnToggleSettingPin.addEventListener('click', () => {
+      const isPass = inputSettingPin.type === 'password';
+      inputSettingPin.type = isPass ? 'text' : 'password';
+      btnToggleSettingPin.textContent = isPass ? '🙈' : '👁️';
+    });
+  }
+
+  if (toggleAutoBackup) {
+    toggleAutoBackup.addEventListener('change', async () => {
+      const enabled = toggleAutoBackup.checked;
+      await StorageService.saveSetting('autoBackupEnabled', enabled);
+      state.settings.autoBackupEnabled = enabled;
+      if (enabled) triggerAutoSyncIfEligible('toggle_enabled');
+    });
+  }
 
   if (btnSavePin) {
     btnSavePin.addEventListener('click', async () => {
-      const pinVal = document.getElementById('input-setting-pin').value.trim();
-      if (pinVal.length !== 4 || isNaN(pinVal)) {
-        alert('O PIN deve ter exatamente 4 dígitos numéricos.');
-        return;
+      try {
+        const pinInput = document.getElementById('input-setting-pin');
+        const pinVal = pinInput ? pinInput.value.trim() : '';
+        if (pinVal.length !== 4 || isNaN(pinVal)) {
+          alert('O PIN deve ter exatamente 4 dígitos numéricos.');
+          return;
+        }
+        const hashed = await hashPin(pinVal);
+        await StorageService.saveSetting('pinHash', hashed);
+        state.settings.pinHash = hashed;
+        updatePinSettingsBadge();
+        if (pinInput) pinInput.value = '';
+        alert('✅ PIN de segurança cadastrado com sucesso!');
+      } catch (err) {
+        console.error('Erro ao salvar PIN:', err);
+        alert(`Erro ao salvar PIN: ${err.message}`);
       }
-      const hashed = await hashPin(pinVal);
-      await StorageService.saveSetting('pinHash', hashed);
-      state.settings.pinHash = hashed;
-      alert('PIN de segurança cadastrado com sucesso!');
-      document.getElementById('input-setting-pin').value = '';
+    });
+  }
+
+  if (btnRemovePin) {
+    btnRemovePin.addEventListener('click', async () => {
+      try {
+        if (!confirm('Deseja realmente remover o PIN de segurança?')) return;
+        await StorageService.saveSetting('pinHash', null);
+        state.settings.pinHash = null;
+        updatePinSettingsBadge();
+        alert('PIN de segurança removido com sucesso!');
+      } catch (err) {
+        alert(`Erro ao remover PIN: ${err.message}`);
+      }
     });
   }
 
@@ -936,6 +1748,22 @@ function setupSettingsController() {
         alert('Biometria nativa cadastrada com sucesso!');
       } catch (e) {
         alert(`Erro na biometria: ${e.message}`);
+      }
+    });
+  }
+
+  const btnReqNotif = document.getElementById('btn-request-notifications');
+  if (btnReqNotif) {
+    btnReqNotif.addEventListener('click', async () => {
+      const perm = await requestNotificationPermission();
+      playChimeSound('finish');
+      if (perm === 'granted') {
+        sendWalkNotification('🔔 Alertas Ativados!', 'As notificações de 5 minutos e término de passeio estão ativas.', 'finish');
+        alert('✅ Notificações e alertas sonoros ativados com sucesso!');
+      } else if (perm === 'denied') {
+        alert('⚠️ As notificações estão bloqueadas nas configurações do navegador/celular. Para receber no iPhone, adicione o PWA à Tela de Início.');
+      } else {
+        alert('🔔 Alerta sonoro testado! No iPhone, adicione à Tela de Início para receber notificações na tela de bloqueio.');
       }
     });
   }
@@ -955,26 +1783,40 @@ function setupSettingsController() {
       const pix = document.getElementById('input-setting-pix').value.trim();
       const googleUrl = document.getElementById('input-setting-google').value.trim();
       const theme = selectTheme ? selectTheme.value : 'auto';
+      const autoBackup = toggleAutoBackup ? toggleAutoBackup.checked : true;
 
       await StorageService.saveSetting('pixKey', pix);
       await StorageService.saveSetting('googleScriptUrl', googleUrl);
       await StorageService.saveSetting('appTheme', theme);
+      await StorageService.saveSetting('autoBackupEnabled', autoBackup);
 
       state.settings.pixKey = pix;
       state.settings.googleScriptUrl = googleUrl;
       state.settings.appTheme = theme;
+      state.settings.autoBackupEnabled = autoBackup;
       applyTheme(theme);
+      updateSyncStatusBadge();
       alert('Configurações salvas com sucesso!');
+
+      if (autoBackup) triggerAutoSyncIfEligible('save_settings');
     });
   }
 
   if (btnSyncGoogle) {
     btnSyncGoogle.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        alert('Você está offline no momento. Seus dados estão 100% seguros no aparelho! Conecte-se à internet para enviar o snapshot para o Google Drive.');
+        return;
+      }
+
       if (!state.settings.googleScriptUrl) {
         alert('Configure a URL do Google Apps Script primeiro na aba Ajustes.');
         return;
       }
       try {
+        btnSyncGoogle.disabled = true;
+        btnSyncGoogle.textContent = 'Enviando...';
+
         const payload = {
           tutors: state.tutors,
           groups: state.groups,
@@ -983,15 +1825,24 @@ function setupSettingsController() {
           adjustments: state.adjustments
         };
         const res = await syncBackupToGoogle(state.settings.googleScriptUrl, payload);
+        await clearPendingChanges(new Date().toISOString());
         alert(res.message);
       } catch (e) {
         alert(`Falha no backup do Google Drive: ${e.message}`);
+      } finally {
+        btnSyncGoogle.disabled = false;
+        btnSyncGoogle.textContent = '☁️ Fazer Backup no Google Drive';
       }
     });
   }
 
   if (btnPullGoogle) {
     btnPullGoogle.addEventListener('click', async () => {
+      if (!navigator.onLine) {
+        alert('Você está offline no momento. Conecte-se à internet para listar e restaurar versões salvas no Google Drive.');
+        return;
+      }
+
       const inputUrl = document.getElementById('input-setting-google')?.value.trim();
       const scriptUrl = state.settings.googleScriptUrl || inputUrl;
 
@@ -1143,4 +1994,46 @@ async function openRestoreBackupModal() {
   } catch (err) {
     container.innerHTML = `<div style="color: var(--danger); padding: 12px; text-align: center;">Erro ao carregar lista: ${err.message}</div>`;
   }
+}
+
+// -------------------------------------------------------------
+// CONTROLE DE STATUS ONLINE / OFFLINE & AUTO-SYNC TRIGGERS (PWA)
+// -------------------------------------------------------------
+function setupOnlineOfflineStatus() {
+  const offlineIndicator = document.getElementById('offline-indicator');
+
+  function updateStatus() {
+    if (!navigator.onLine) {
+      if (offlineIndicator) offlineIndicator.style.display = 'flex';
+    } else {
+      if (offlineIndicator) offlineIndicator.style.display = 'none';
+    }
+  }
+
+  window.addEventListener('online', () => {
+    updateStatus();
+    console.log('Petwalker: Conexão restabelecida. Checando sincronização automática...');
+    triggerAutoSyncIfEligible('online_event');
+  });
+
+  window.addEventListener('offline', () => {
+    updateStatus();
+    console.warn('Petwalker: Modo offline ativado.');
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      triggerAutoSyncIfEligible('app_focus');
+    }
+  });
+
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn && conn.addEventListener) {
+    conn.addEventListener('change', () => {
+      console.log('Petwalker: Mudança de rede detectada.');
+      triggerAutoSyncIfEligible('network_change');
+    });
+  }
+
+  updateStatus();
 }

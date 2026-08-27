@@ -1,47 +1,59 @@
-# Glossário de Domínio - Petwalker
+# Glossário de Domínio & Arquitetura - Petwalker
 
-Este documento define a linguagem ubíqua (Ubiquitous Language) do sistema Petwalker PWA.
-
-## Entidades Principais
-
-### Tutor (Cliente / Responsável)
-Pessoa ou família responsável por um ou mais Pets. É a entidade financeira a quem as Faturas Mensais são destinadas.
-- **Campos**: Nome, E-mail, Telefone/WhatsApp, Endereço Principal, Observações.
-
-### Pet
-Animal de estimação associado a um Tutor.
-- **Campos**: Nome, Raça, Idade/Porte, Recomendações Especiais.
-
-### Grupo de Passeio (Contrato de Passeio)
-Agrupamento de um ou mais Pets do mesmo Tutor que passeiam juntos em uma mesma sessão de horário. O valor do passeio é negociado por **Horário/Sessão** (não por pet individual).
-- **Valores Contratados**:
-  - Valor Sessão 30 minutos (ex: R$ 40,00)
-  - Valor Sessão 60 minutos (ex: R$ 70,00)
-
-### Sessão de Passeio (Walk Session)
-Registro operacional de um passeio realizado.
-- **Dados Temporais**: Data, Horário Inicial Efetivo, Horário Final Efetivo.
-- **Duração Contratada**: 30 minutos ou 60 minutos (usada estritamente para o cálculo financeiro).
-- **Custo Histórico Congelado**: O valor do passeio é gravado na sessão no momento de sua realização (`cost`), garantindo que reajustes futuros de preços não alterem faturas de meses passados.
-- **Vínculo**: Grupo de Passeio / Tutor.
-- **Anotações & Fotos**: Disposição do pet, necessidades fisiológicas (xixi/cocô), ocorrências e foto comprimida (WebP/Canvas).
-- **Local/Rota**: Bairro ou local do passeio.
-
-### Fatura Mensal (Monthly Invoice)
-Consolidação financeira mensal gerada para um Tutor.
-- **Período**: Mês/Ano de referência.
-- **Itens de Passeio**: Lista de Sessões de Passeio realizadas no mês × Valor Histórico Gravado da sessão.
-- **Ajustes**: Soma de Créditos (-), Débitos (+) ou Descontos passados.
-- **Total a Pagar**: Valor líquido final apurado.
-
-### Ajuste Financeiro (Financial Adjustment)
-Lançamento financeiro avulso atrelado a um Tutor para ser compensado na Fatura Mensal.
-- **Tipos**: Crédito (abatimento), Débito (serviço extra como Dog Shower), Desconto.
+Este documento define a linguagem ubíqua (*Ubiquitous Language*) e as regras operacionais do sistema **Petwalker PWA**.
 
 ---
 
-## Fluxo Operacional & Múltiplos Dispositivos
+## 🏛️ Entidades Principais
 
-1. **Passeio na Rua (Celular)**: Noiva inicia e conclui o passeio no celular (100% offline). O app salva no `IndexedDB` local e grava o custo histórico da sessão.
-2. **Sincronização Nuvem (VPS n8n)**: Assim que o celular conecta na rede ou ao concluir o passeio, os dados são sincronizados via Webhook n8n.
-3. **Gestão e Fechamento em Casa (Laptop)**: Ao abrir a URL do PWA no computador de casa, o app busca o snapshot sincronizado via n8n, permitindo revisar passeios, ajustar valores e emitir faturas no conforto do laptop.
+### 1. Tutor (Cliente / Responsável)
+Pessoa ou família responsável por um ou mais Pets. É a entidade financeira a quem as Faturas Mensais são destinadas.
+- **Campos**: `id`, `name`, `phone`, `email`.
+
+### 2. Pet
+Animal de estimação associado a um Tutor e Grupo.
+- **Campos**: `id`, `groupId`, `name`, `breed`.
+
+### 3. Grupo de Passeio (Contrato de Passeio)
+Agrupamento de um ou mais Pets do mesmo Tutor que passeiam juntos em uma mesma sessão de horário. O valor do passeio é negociado por **Horário/Sessão** (e não por pet individual).
+- **Valores Contratados**:
+  - `rate30min`: Valor da sessão de 30 minutos (ex: R$ 40,00).
+  - `rate60min`: Valor da sessão de 60 minutos (ex: R$ 70,00).
+
+### 4. Sessão de Passeio (Walk Session)
+Registro operacional de um passeio realizado.
+- **Dados Temporais**: `date`, `startTime`, `endTime`.
+- **Duração Contratada**: 30 ou 60 minutos (usada para cálculo financeiro).
+- **Custo Histórico Congelado (`cost`)**: Gravado no momento da conclusão para que reajustes futuros de preços não alterem faturas de meses anteriores.
+- **Quilometragem Opcional**: `kmStart`, `kmEnd`, `kmTotal` para passeios realizados de carro.
+- **Registro Fotográfico (`photo`)**: Imagem comprimida em Base64 (WebP/Canvas) para exibição e histórico.
+- **Anotações**: Necessidades fisiológicas (xixi, cocô, água, cansaço) e notas livres.
+
+### 5. Fatura Mensal (Monthly Invoice)
+Consolidação financeira mensal gerada para um Tutor.
+- **Período**: Mês/Ano de referência (`YYYY-MM`).
+- **Itens de Passeio**: Lista de Sessões do mês × Custo Gravado.
+- **Ajustes**: Soma de Créditos (-), Débitos extras (+) e Descontos.
+- **Total a Pagar**: Valor líquido apurado com dados PIX do prestador.
+
+### 6. Ajuste Financeiro (Financial Adjustment)
+Lançamento avulso atrelado a um Tutor para compensação na fatura mensal.
+- **Tipos**: `credit` (abatimento), `debit` (serviço extra como banho), `discount`.
+
+---
+
+## 🔄 Fluxo Operacional & Sincronização em Nuvem
+
+```mermaid
+graph TD
+    A[Passeio na Rua - Celular] -->|Offline-first / Anti-crash| B[IndexedDB Local + LocalStorage]
+    B -->|Alteração Realizada| C[pendingSync = true]
+    C --> D{Dispositivo Conecta no Wi-Fi?}
+    D -- Sim --> E[Auto-Backup Silencioso para o Google Drive]
+    E -->|Sucesso| F[pendingSync = false & lastSyncTime atualizado]
+    E -->|Google Apps Script| G[Retenção: 20 dias + Último Mensal + Expiração 1 ano]
+```
+
+1. **Passeio na Rua (Celular)**: Funciona 100% offline. O cronômetro ativo possui cópia no `localStorage` para proteção contra reinicializações ou fechamento de abas.
+2. **Sincronização Automática Inteligente**: Ao detectar conexão Wi-Fi (ou foco do app) com alterações pendentes, o snapshot é enviado em segundo plano para a pasta `Petwalker_Backups` no Google Drive.
+3. **Gestão e Fechamento no Computador**: Ao abrir o PWA no notebook ou outro dispositivo, a restauração da versão mais recente ou histórica consolida os dados sem conflitos.
