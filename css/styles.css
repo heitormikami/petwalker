@@ -541,6 +541,35 @@ input[type="date"]::-webkit-date-and-time-value {
   transform: scale(0.95);
 }
 
+.date-nav-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px 6px;
+  margin-bottom: 16px;
+  gap: 6px;
+  min-height: 46px;
+}
+
+#filter-daily-date {
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: transparent;
+  border: none;
+  text-align: center;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-appearance: none;
+  min-width: 0;
+  max-width: 135px;
+  padding: 0 4px;
+}
+
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

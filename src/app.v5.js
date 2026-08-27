@@ -382,17 +382,20 @@ async function compressImageFile(file, maxWidth = 800, maxHeight = 800, quality 
   });
 }
 
-function dataUrlToFile(dataUrl, filename) {
-  const arr = dataUrl.split(',');
-  const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
+function dataUrlToJpegBlob(dataUrl) {
+  try {
+    const parts = dataUrl.split(',');
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: 'image/jpeg' });
+  } catch (e) {
+    console.warn('Erro ao converter imagem:', e);
+    return null;
   }
-  return new File([u8arr], filename, { type: mime });
 }
 
 function setupPhotoViewerModal() {
@@ -412,47 +415,62 @@ function setupPhotoViewerModal() {
     currentSessionId = null;
   };
 
-  if (btnClose) btnClose.addEventListener('click', hideModal);
-  if (btnCloseTop) btnCloseTop.addEventListener('click', hideModal);
+  if (btnClose) btnClose.onclick = hideModal;
+  if (btnCloseTop) btnCloseTop.onclick = hideModal;
   if (modal) {
-    modal.addEventListener('click', (e) => {
+    modal.onclick = (e) => {
       if (e.target === modal) hideModal();
-    });
+    };
   }
 
   if (btnShare) {
-    btnShare.addEventListener('click', async () => {
-      if (!currentPhotoDataUrl) return;
+    btnShare.onclick = async () => {
+      if (!currentPhotoDataUrl) {
+        alert('Nenhuma foto selecionada para compartilhar.');
+        return;
+      }
       try {
-        const file = dataUrlToFile(currentPhotoDataUrl, 'passeio-petwalker.jpg');
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        const blob = dataUrlToJpegBlob(currentPhotoDataUrl);
+        if (blob) {
+          const file = new File([blob], 'passeio-petwalker.jpg', { type: 'image/jpeg' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Foto do Passeio 🐾',
+              text: 'Confira a foto do passeio!'
+            });
+            return;
+          }
+        }
+
+        if (navigator.share) {
           await navigator.share({
             title: 'Foto do Passeio 🐾',
-            text: 'Foto do passeio com o Petwalker!',
-            files: [file]
+            text: 'Confira a foto do passeio no Petwalker!'
           });
-        } else if (navigator.share) {
-          await navigator.share({
-            title: 'Foto do Passeio 🐾',
-            text: 'Foto do passeio com o Petwalker!'
-          });
-        } else {
-          // Fallback para download da imagem
+          return;
+        }
+
+        // Fallback: abrir em nova aba para salvar/compartilhar
+        const a = document.createElement('a');
+        a.href = currentPhotoDataUrl;
+        a.download = 'passeio-petwalker.jpg';
+        a.target = '_blank';
+        a.click();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Erro ao compartilhar:', err);
           const a = document.createElement('a');
           a.href = currentPhotoDataUrl;
           a.download = 'passeio-petwalker.jpg';
           a.click();
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.warn('Compartilhamento cancelado ou não suportado:', err);
-        }
       }
-    });
+    };
   }
 
   if (btnDelete) {
-    btnDelete.addEventListener('click', async () => {
+    btnDelete.onclick = async () => {
       if (!currentSessionId) return;
       if (!confirm('Deseja realmente remover esta foto do passeio?')) return;
 
@@ -465,7 +483,7 @@ function setupPhotoViewerModal() {
         await markPendingChanges();
         alert('Foto removida com sucesso!');
       }
-    });
+    };
   }
 
   window.openPhotoViewer = (photoDataUrl, sessionId = null) => {

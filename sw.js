@@ -1,4 +1,4 @@
-const CACHE_NAME = 'petwalker-v14';
+const CACHE_NAME = 'petwalker-v15';
 const ASSETS = [
   './',
   './index.html',
