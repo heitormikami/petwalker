@@ -12,9 +12,9 @@
   - **Aviso de 5 minutos antes**: Dispara notificação, som suave ascendente e vibração dupla aos 25 min (plano 30m) ou 55 min (plano 60m).
   - **Aviso de término exato**: Alerta comemorativo ao atingir a duração contratada.
 - **⏱️ Duração Contratada Inteligente**: Ajusta e fixa a duração automaticamente caso o grupo possua apenas 1 plano de horário cadastrado (ex: apenas 30m ou apenas 60m), dispensando seleções manuais.
-- **Registro Fotográfico com Compartilhamento & Exclusão**: Captura ou anexo de fotos comprimidas automaticamente via Canvas/WebP (~80KB) armazenadas diretamente no banco local `IndexedDB`, com visualizador modal em tela cheia, botão de **compartilhamento nativo** (WhatsApp/Telegram/AirDrop) e botão de exclusão.
+- **Novo Componente de Foto (Ícone de Câmera & Feedback Visual)**: Substitui o botão cinza nativo por um cartão moderno com ícone de câmera, pré-visualização instantânea, botão de exclusão e suporte a compartilhamento nativo (WhatsApp, Telegram, AirDrop).
 - **Quilometragem (Km Inicial e Final)**: Registro opcional de odômetro para passeios realizados com transporte de carro, exibindo a distância total calculada nos cards do diário.
-- **Barra de Navegação de Datas no Diário**: Barra ergonômica com botões táteis ampliados `[ ◀ Ontem ] [ Data Centralizada ] [ Hoje ] [ Amanhã ▶ ]` e 3 métricas em destaque (*Passeios na Data*, *Total no Mês* e *Tempo Total no Dia*).
+- **Barra de Navegação de Datas no Diário (Pill Bar)**: Barra compacta em formato de cápsula fina com botões táteis circulares `[ ◀ ]`, data centralizada sem quebra de linhas, atalho `[ Hoje ]` e botão de avanço `[ ▶ ]`.
 
 ### 👥 Tutores, Grupos & Precificação
 - Cadastro de Tutores com grupos de pets associados e botão de **importação direta de contatos** da agenda do celular.
@@ -47,8 +47,18 @@
 - **Frontend Core**: Vanilla HTML5, Modern CSS (Design System com temas Claro/Escuro, HSL e Variáveis CSS) e Vanilla JavaScript (ES Modules).
 - **Armazenamento**: IndexedDB local-first (`StorageService`).
 - **Segurança**: Web Crypto API + Pure JS SHA-256 Fallback e WebAuthn.
-- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v12` para execução 100% offline e notificações.
+- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v16` para execução 100% offline e notificações.
 - **Cloud Backend**: Google Apps Script (Drive API + Gmail API).
+
+---
+
+## 📋 Regra Obrigatória do Processo de Desenvolvimento
+
+> [!IMPORTANT]
+> **Antes de qualquer `git commit` ou `git push` para o GitHub**, é obrigatório atualizar e sincronizar toda a documentação pendente:
+> 1. `WHATS_NEW.md` (Notas da versão para o usuário final).
+> 2. `README.md` (Visão geral e tecnologias).
+> 3. `CONTEXT.md` (Regras de domínio e arquitetura).
 
 ---
 

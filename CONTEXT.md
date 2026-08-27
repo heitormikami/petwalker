@@ -57,3 +57,16 @@ graph TD
 1. **Passeio na Rua (Celular)**: Funciona 100% offline. O cronômetro ativo possui cópia no `localStorage` para proteção contra reinicializações ou fechamento de abas.
 2. **Sincronização Automática Inteligente**: Ao detectar conexão Wi-Fi (ou foco do app) com alterações pendentes, o snapshot é enviado em segundo plano para a pasta `Petwalker_Backups` no Google Drive.
 3. **Gestão e Fechamento no Computador**: Ao abrir o PWA no notebook ou outro dispositivo, a restauração da versão mais recente ou histórica consolida os dados sem conflitos.
+
+---
+
+## 📋 Regra Operacional de Desenvolvimento & Versionamento
+
+> **Regra Obrigatória do Processo:**  
+> Antes de qualquer `git commit` ou `git push` para o repositório remoto (GitHub), o assistente/desenvolvedor **DEVE**:
+> 1. Atualizar e sincronizar `WHATS_NEW.md` com as novidades da versão.
+> 2. Atualizar e manter coerente o `README.md`.
+> 3. Atualizar o `CONTEXT.md` com eventuais novos termos de domínio ou regras de arquitetura.
+> 4. Incrementar a versão de cache no `sw.js` caso haja novos assets ou lógica de frontend.
+> 5. Executar a suíte de testes automatizados (`node tests/domain.test.js`).
+

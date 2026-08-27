@@ -9,7 +9,7 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 🔔 Alertas de Tempo    🚗 Odômetro (Km)      🛡️ Anti-Crash no Cronômetro    │
-│ 📸 Fotos dos Pets      ⏱️ Duração Fixa Auto  ☁️ Auto-Backup no Wi-Fi       │
+│ 📸 Cartão de Foto 3D   ⏱️ Duração Fixa Auto  ☁️ Auto-Backup no Wi-Fi       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -34,15 +34,21 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 - Novos campos opcionais de **Km Inicial** e **Km Final** ao concluir o passeio ou no lançamento manual.
 - Exibição de badge com a distância calculada no Diário (ex: `🚗 Km: 12.450 → 12.465,5 (15.5 km)`).
 
-### 📸 Registro Fotográfico com Compartilhamento e Exclusão
-- Ao tocar na miniatura da foto no Diário, o modal de zoom em tela cheia agora possui:
-  - **📤 Compartilhar**: Dispara a folha de compartilhamento nativa do celular (WhatsApp, Telegram, AirDrop, Salvar Imagem, etc.) com o arquivo da foto anexado.
-  - **🗑️ Excluir Foto**: Permite apagar a foto do passeio com 1 clique se você não quiser mantê-la.
-- Miniaturas com toque rápido para abrir o visualizador em tela cheia.
+### 📸 Novo Componente de Foto (Ícone de Câmera & Feedback Visual)
+- Substituído o botão cinza nativo do navegador por um cartão moderno:
+  - 📸 **Ícone de câmera em destaque**.
+  - **Título e Instrução**: *"Tirar / Anexar Foto • Toque para abrir a câmera ou galeria"*.
+  - **Feedback Imediato**: Muda para `✅ Foto Anexada` com miniatura e botão `✕ Remover Foto`.
+- **Compartilhamento & Exclusão no Zoom**:
+  - **📤 Compartilhar**: Dispara o menu nativo do celular (WhatsApp, Telegram, AirDrop, etc.) enviando o arquivo da foto.
+  - **🗑️ Excluir Foto**: Remove a foto daquele passeio com 1 toque.
+  - **✖️ Fechar**: Botão no topo e no rodapé para fechar a visualização.
 
-### 📅 Nova Barra de Navegação de Datas no Diário
-- Barra de navegação espaçosa e destacada no topo do Diário:
-  - Botões grandes e confortáveis ao toque: `◀ Ontem`, seletor de data centralizado, atalho `Hoje` e `Amanhã ▶`.
+### 📅 Barra de Navegação de Datas Compacta (Pill Bar)
+- Barra de navegação em formato de cápsula fina (*pill*) no topo do Diário:
+  - Botões circulares limpos `[ ◀ ]` e `[ ▶ ]`.
+  - Campo de data centralizado sem quebra de linhas.
+  - Atalho rápido `[ Hoje ]` para retorno imediato ao dia atual.
 
 ### 📱 Importação Direta de Contatos da Agenda
 - Botão **"📱 Importar Contato"** no cadastro de Tutores, permitindo preencher Nome, Telefone e E-mail automaticamente através da agenda nativa do aparelho.
@@ -93,8 +99,9 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 
 ## 🎨 5. Visual & PWA
 
-- **Ícones em Alta Definição**: Ícones modernos desenhados especificamente para a tela inicial do iOS (Apple Touch Icon 180x180 sem cortes) e Android Adaptive Maskable.
-- **Service Worker `v12`**: Atualização transparente em segundo plano mantendo todos os dados do banco local (`IndexedDB`) 100% intactos.
+- **Novo Ícone Premium 3D (Opção 1)**: Cãozinho estilizado caminhando com coleira e pata luminosa em acabamento *glassmorphism* em alta resolução para iPhone e Android.
+- **Versão Visível em Ajustes**: Rodapé com a versão oficial (`Petwalker PWA • Versão 2.1 (Build 2026.08)`).
+- **Service Worker `v16`**: Atualização transparente em segundo plano mantendo todos os dados do banco local (`IndexedDB`) 100% intactos.
 
 ---
 
