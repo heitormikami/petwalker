@@ -163,17 +163,27 @@
   <!-- VIEW 2: RESUMO DIÁRIO -->
   <main id="view-daily" class="view">
     <div class="card">
-      <div class="card-title" style="flex-wrap: wrap; gap: 8px;">
-        <span>📅 Passeios do Dia</span>
-        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-          <div class="date-stepper" style="display: flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px;">
-            <button type="button" class="btn btn-ghost btn-sm" id="btn-date-prev" title="Dia Anterior" style="padding: 4px 8px; font-size: 0.8rem; background: none; border: none; cursor: pointer;">◀</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="btn-date-today" title="Ir para Hoje" style="padding: 4px 6px; font-size: 0.75rem; font-weight: 700; color: var(--primary); background: none; border: none; cursor: pointer;">Hoje</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="btn-date-next" title="Próximo Dia" style="padding: 4px 8px; font-size: 0.8rem; background: none; border: none; cursor: pointer;">▶</button>
-          </div>
-          <input type="date" id="filter-daily-date" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.85rem;">
-          <button class="btn btn-primary btn-sm" id="btn-open-manual-walk">+ Lançar</button>
+      <div class="card-title" style="margin-bottom: 12px;">
+        <span>📅 Diário de Passeios</span>
+        <button class="btn btn-primary btn-sm" id="btn-open-manual-walk">+ Lançar Passeio</button>
+      </div>
+
+      <!-- BARRA DE NAVEGAÇÃO DE DATA DESTAQUE -->
+      <div class="date-nav-toolbar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 16px; gap: 8px;">
+        <button type="button" class="btn btn-outline" id="btn-date-prev" title="Dia Anterior" style="display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; font-size: 0.95rem; font-weight: 700; border-radius: var(--radius-sm); min-height: 42px;">
+          ◀ <span style="font-size: 0.85rem;">Ontem</span>
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center;">
+          <input type="date" id="filter-daily-date" class="form-input" style="padding: 8px 10px; font-size: 0.95rem; font-weight: 700; text-align: center; max-width: 160px; border-radius: var(--radius-sm); min-height: 42px;">
+          <button type="button" class="btn btn-secondary" id="btn-date-today" title="Ir para Hoje" style="padding: 8px 12px; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-sm); min-height: 42px;">
+            Hoje
+          </button>
         </div>
+
+        <button type="button" class="btn btn-outline" id="btn-date-next" title="Próximo Dia" style="display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; font-size: 0.95rem; font-weight: 700; border-radius: var(--radius-sm); min-height: 42px;">
+          <span style="font-size: 0.85rem;">Amanhã</span> ▶
+        </button>
       </div>
 
       <div id="daily-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
@@ -372,7 +382,12 @@
   <!-- MODAL TUTOR / GRUPO -->
   <div id="modal-tutor" class="modal-overlay">
     <div class="modal-card">
-      <h3 class="card-title" id="modal-tutor-title">Cadastrar Novo Tutor</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" id="modal-tutor-title" style="margin-bottom: 0;">Cadastrar Novo Tutor</h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-pick-contact" title="Importar da agenda do celular" style="display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 700; padding: 6px 10px;">
+          📱 Importar Contato
+        </button>
+      </div>
       <form id="form-tutor">
         <input type="hidden" id="tutor-id">
         <input type="hidden" id="tutor-group-id">
@@ -581,11 +596,19 @@
   </div>
 
   <!-- MODAL DE VISUALIZAÇÃO DE FOTO DO PASSEIO -->
-  <div id="modal-photo-viewer" class="modal-overlay" style="background: rgba(0,0,0,0.85); z-index: 3000;">
-    <div class="modal-card" style="max-width: 480px; padding: 14px; text-align: center; background: transparent; box-shadow: none;">
-      <img id="viewer-photo-img" src="" alt="Foto do Passeio" style="width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.5); background: #000;">
-      <div style="margin-top: 14px;">
-        <button type="button" class="btn btn-primary btn-full" id="btn-close-photo-viewer">Fechar Foto</button>
+  <div id="modal-photo-viewer" class="modal-overlay" style="background: rgba(0,0,0,0.88); z-index: 3000;">
+    <div class="modal-card" style="max-width: 480px; padding: 16px; text-align: center; background: var(--surface); border-radius: var(--radius-md); box-shadow: 0 16px 48px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">📸 Foto do Passeio</span>
+        <button type="button" id="btn-close-photo-viewer-top" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); padding: 4px;" title="Fechar">✖</button>
+      </div>
+      <img id="viewer-photo-img" src="" alt="Foto do Passeio" style="width: 100%; max-height: 55vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: 0 4px 16px rgba(0,0,0,0.2); background: #000;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px;">
+        <button type="button" class="btn btn-primary" id="btn-share-photo">📤 Compartilhar</button>
+        <button type="button" class="btn btn-danger" id="btn-delete-photo">🗑️ Excluir Foto</button>
+      </div>
+      <div style="margin-top: 10px;">
+        <button type="button" class="btn btn-outline btn-full" id="btn-close-photo-viewer">Fechar</button>
       </div>
     </div>
   </div>

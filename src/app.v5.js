@@ -382,20 +382,96 @@ async function compressImageFile(file, maxWidth = 800, maxHeight = 800, quality 
   });
 }
 
+function dataUrlToFile(dataUrl, filename) {
+  const arr = dataUrl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
 function setupPhotoViewerModal() {
   const modal = document.getElementById('modal-photo-viewer');
   const imgEl = document.getElementById('viewer-photo-img');
   const btnClose = document.getElementById('btn-close-photo-viewer');
+  const btnCloseTop = document.getElementById('btn-close-photo-viewer-top');
+  const btnShare = document.getElementById('btn-share-photo');
+  const btnDelete = document.getElementById('btn-delete-photo');
 
-  if (btnClose && modal) {
-    btnClose.addEventListener('click', () => modal.classList.remove('active'));
+  let currentPhotoDataUrl = null;
+  let currentSessionId = null;
+
+  const hideModal = () => {
+    if (modal) modal.classList.remove('active');
+    currentPhotoDataUrl = null;
+    currentSessionId = null;
+  };
+
+  if (btnClose) btnClose.addEventListener('click', hideModal);
+  if (btnCloseTop) btnCloseTop.addEventListener('click', hideModal);
+  if (modal) {
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.remove('active');
+      if (e.target === modal) hideModal();
     });
   }
 
-  window.openPhotoViewer = (photoDataUrl) => {
+  if (btnShare) {
+    btnShare.addEventListener('click', async () => {
+      if (!currentPhotoDataUrl) return;
+      try {
+        const file = dataUrlToFile(currentPhotoDataUrl, 'passeio-petwalker.jpg');
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Foto do Passeio 🐾',
+            text: 'Foto do passeio com o Petwalker!',
+            files: [file]
+          });
+        } else if (navigator.share) {
+          await navigator.share({
+            title: 'Foto do Passeio 🐾',
+            text: 'Foto do passeio com o Petwalker!'
+          });
+        } else {
+          // Fallback para download da imagem
+          const a = document.createElement('a');
+          a.href = currentPhotoDataUrl;
+          a.download = 'passeio-petwalker.jpg';
+          a.click();
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Compartilhamento cancelado ou não suportado:', err);
+        }
+      }
+    });
+  }
+
+  if (btnDelete) {
+    btnDelete.addEventListener('click', async () => {
+      if (!currentSessionId) return;
+      if (!confirm('Deseja realmente remover esta foto do passeio?')) return;
+
+      const session = state.sessions.find(s => s.id === currentSessionId);
+      if (session) {
+        session.photo = null;
+        await StorageService.saveSession(session);
+        hideModal();
+        renderDailyView();
+        await markPendingChanges();
+        alert('Foto removida com sucesso!');
+      }
+    });
+  }
+
+  window.openPhotoViewer = (photoDataUrl, sessionId = null) => {
     if (!modal || !imgEl || !photoDataUrl) return;
+    currentPhotoDataUrl = photoDataUrl;
+    currentSessionId = sessionId;
     imgEl.src = photoDataUrl;
     modal.classList.add('active');
   };
@@ -878,7 +954,8 @@ function setupDailyView() {
 
       if (photoThumb) {
         const photoSrc = photoThumb.src || decodeURIComponent(photoThumb.dataset.photo || '');
-        if (window.openPhotoViewer && photoSrc) window.openPhotoViewer(photoSrc);
+        const sessionId = photoThumb.dataset.id || null;
+        if (window.openPhotoViewer && photoSrc) window.openPhotoViewer(photoSrc, sessionId);
       }
 
       if (btnEdit) {
@@ -954,7 +1031,7 @@ function renderDailyView() {
       : '';
 
     const photoHtml = s.photo
-      ? `<img src="${s.photo}" class="photo-thumb" data-action="view-photo" title="Toque para ampliar foto" style="cursor: pointer;">`
+      ? `<img src="${s.photo}" class="photo-thumb" data-action="view-photo" data-id="${s.id}" title="Toque para ampliar foto" style="cursor: pointer;">`
       : '';
 
     return `
@@ -1177,6 +1254,34 @@ function setupTutorManager() {
   }
 
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+
+  const btnPickContact = document.getElementById('btn-pick-contact');
+  if (btnPickContact) {
+    btnPickContact.addEventListener('click', async () => {
+      if ('contacts' in navigator && 'ContactsManager' in window) {
+        try {
+          const props = ['name', 'tel', 'email'];
+          const contacts = await navigator.contacts.select(props, { multiple: false });
+          if (contacts && contacts.length > 0) {
+            const c = contacts[0];
+            const name = (c.name && c.name[0]) || '';
+            const tel = (c.tel && c.tel[0]) || '';
+            const email = (c.email && c.email[0]) || '';
+
+            if (name) document.getElementById('tutor-name').value = name;
+            if (tel) document.getElementById('tutor-phone').value = tel;
+            if (email) document.getElementById('tutor-email').value = email;
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.warn('Erro ao acessar contatos:', err);
+          }
+        }
+      } else {
+        alert('ℹ️ A seleção direta de contatos não é suportada neste navegador (restrição de segurança nativa do iOS/Safari). Preencha o nome e telefone nos campos abaixo.');
+      }
+    });
+  }
 
   // Delegação de eventos para Editar e Excluir Tutor
   if (container) {
