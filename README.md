@@ -12,12 +12,12 @@
   - **Aviso de 5 minutos antes**: Dispara notificação, som suave ascendente e vibração dupla aos 25 min (plano 30m) ou 55 min (plano 60m).
   - **Aviso de término exato**: Alerta comemorativo ao atingir a duração contratada.
 - **⏱️ Duração Contratada Inteligente**: Ajusta e fixa a duração automaticamente caso o grupo possua apenas 1 plano de horário cadastrado (ex: apenas 30m ou apenas 60m), dispensando seleções manuais.
-- **Registro Fotográfico Otimizado**: Captura ou anexo de fotos comprimidas automaticamente via Canvas/WebP (~80KB) armazenadas diretamente no banco local `IndexedDB`, com visualizador modal em tela cheia.
+- **Registro Fotográfico com Compartilhamento & Exclusão**: Captura ou anexo de fotos comprimidas automaticamente via Canvas/WebP (~80KB) armazenadas diretamente no banco local `IndexedDB`, com visualizador modal em tela cheia, botão de **compartilhamento nativo** (WhatsApp/Telegram/AirDrop) e botão de exclusão.
 - **Quilometragem (Km Inicial e Final)**: Registro opcional de odômetro para passeios realizados com transporte de carro, exibindo a distância total calculada nos cards do diário.
-- **Diário de Bordo Interativo**: Navegação rápida de datas com atalhos `[ ◀ Ontem ] [ Hoje ] [ Amanhã ▶ ]` e 3 métricas em destaque (*Passeios na Data*, *Total no Mês* e *Tempo Total no Dia*).
+- **Barra de Navegação de Datas no Diário**: Barra ergonômica com botões táteis ampliados `[ ◀ Ontem ] [ Data Centralizada ] [ Hoje ] [ Amanhã ▶ ]` e 3 métricas em destaque (*Passeios na Data*, *Total no Mês* e *Tempo Total no Dia*).
 
 ### 👥 Tutores, Grupos & Precificação
-- Cadastro de Tutores com grupos de pets associados.
+- Cadastro de Tutores com grupos de pets associados e botão de **importação direta de contatos** da agenda do celular.
 - Tabela de preços flexível por sessão (30 min / 60 min) com congelamento histórico de custos para garantir que reajustes futuros não alterem faturas de meses anteriores.
 - Delegação de eventos segura para edição e exclusão em cascata (remove tutores, grupos e pets órfãos).
 
