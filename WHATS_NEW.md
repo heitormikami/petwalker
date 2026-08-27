@@ -34,13 +34,18 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 - Novos campos opcionais de **Km Inicial** e **Km Final** ao concluir o passeio ou no lançamento manual.
 - Exibição de badge com a distância calculada no Diário (ex: `🚗 Km: 12.450 → 12.465,5 (15.5 km)`).
 
-### 📸 Registro Fotográfico Otimizado com Visualizador
-- Ao anexar ou tirar foto do passeio, a imagem é comprimida automaticamente via Canvas/WebP (~80KB) sem ocupar a memória do celular.
-- Miniaturas elegantes nos cards diários com toque para **abrir em tela cheia com zoom**.
+### 📸 Registro Fotográfico com Compartilhamento e Exclusão
+- Ao tocar na miniatura da foto no Diário, o modal de zoom em tela cheia agora possui:
+  - **📤 Compartilhar**: Dispara a folha de compartilhamento nativa do celular (WhatsApp, Telegram, AirDrop, Salvar Imagem, etc.) com o arquivo da foto anexado.
+  - **🗑️ Excluir Foto**: Permite apagar a foto do passeio com 1 clique se você não quiser mantê-la.
+- Miniaturas com toque rápido para abrir o visualizador em tela cheia.
 
-### 📅 Navegação Rápida no Diário & Métricas
-- Botões rápidos `[ ◀ Ontem ]`, `[ Hoje ]` e `[ Amanhã ▶ ]` para alternar os dias instantaneamente com 1 toque.
-- 3 cards de métricas em destaque: **Passeios na Data**, **Total no Mês** e **Tempo Total do Dia**.
+### 📅 Nova Barra de Navegação de Datas no Diário
+- Barra de navegação espaçosa e destacada no topo do Diário:
+  - Botões grandes e confortáveis ao toque: `◀ Ontem`, seletor de data centralizado, atalho `Hoje` e `Amanhã ▶`.
+
+### 📱 Importação Direta de Contatos da Agenda
+- Botão **"📱 Importar Contato"** no cadastro de Tutores, permitindo preencher Nome, Telefone e E-mail automaticamente através da agenda nativa do aparelho.
 
 ---
 
