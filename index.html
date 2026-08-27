@@ -495,6 +495,14 @@
           <textarea class="form-textarea" id="manual-walk-notes" rows="2" placeholder="Ex: Fez xixi, cocô, tudo ótimo..."></textarea>
         </div>
 
+        <div class="form-group">
+          <label class="form-label">📷 Foto do Passeio (opcional)</label>
+          <input type="file" class="form-input" id="manual-walk-photo-input" accept="image/*">
+          <div id="manual-walk-photo-preview" style="margin-top: 8px; display: none; text-align: center;">
+            <img id="manual-walk-preview-img" src="" style="max-height: 120px; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover;">
+          </div>
+        </div>
+
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" class="btn btn-outline btn-full" id="btn-close-walk-modal">Cancelar</button>
           <button type="submit" class="btn btn-primary btn-full">Salvar Passeio</button>
@@ -547,6 +555,8 @@
         <button class="btn btn-outline btn-full" id="btn-close-restore-modal">Cancelar</button>
       </div>
     </div>
+  </div>
+
   <!-- MODAL DE REDEFINIÇÃO DE PIN (ESQUECEU O PIN) -->
   <div id="modal-reset-pin" class="modal-overlay">
     <div class="modal-card" style="max-width: 420px; text-align: center;">
@@ -568,6 +578,8 @@
         <button type="button" class="btn btn-danger btn-full" id="btn-confirm-reset-pin">Confirmar</button>
       </div>
     </div>
+  </div>
+
   <!-- MODAL DE VISUALIZAÇÃO DE FOTO DO PASSEIO -->
   <div id="modal-photo-viewer" class="modal-overlay" style="background: rgba(0,0,0,0.85); z-index: 3000;">
     <div class="modal-card" style="max-width: 480px; padding: 14px; text-align: center; background: transparent; box-shadow: none;">

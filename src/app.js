@@ -877,8 +877,8 @@ function setupDailyView() {
       const photoThumb = e.target.closest('[data-action="view-photo"]');
 
       if (photoThumb) {
-        const photoUrl = decodeURIComponent(photoThumb.dataset.photo);
-        if (window.openPhotoViewer) window.openPhotoViewer(photoUrl);
+        const photoSrc = photoThumb.src || decodeURIComponent(photoThumb.dataset.photo || '');
+        if (window.openPhotoViewer && photoSrc) window.openPhotoViewer(photoSrc);
       }
 
       if (btnEdit) {
@@ -954,7 +954,7 @@ function renderDailyView() {
       : '';
 
     const photoHtml = s.photo
-      ? `<img src="${s.photo}" class="photo-thumb" data-action="view-photo" data-photo="${encodeURIComponent(s.photo)}" title="Toque para ampliar foto">`
+      ? `<img src="${s.photo}" class="photo-thumb" data-action="view-photo" title="Toque para ampliar foto" style="cursor: pointer;">`
       : '';
 
     return `
@@ -992,6 +992,12 @@ function openManualWalkModal(session = null) {
   const notesInput = document.getElementById('manual-walk-notes');
   const idInput = document.getElementById('manual-walk-id');
 
+  const photoInput = document.getElementById('manual-walk-photo-input');
+  const photoPreview = document.getElementById('manual-walk-photo-preview');
+  const previewImg = document.getElementById('manual-walk-preview-img');
+
+  if (photoInput) photoInput.value = '';
+
   // Atualizar seletores de grupo
   groupSelect.innerHTML = '<option value="">-- Selecione o Grupo --</option>' +
     state.groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
@@ -999,6 +1005,19 @@ function openManualWalkModal(session = null) {
   groupSelect.onchange = () => {
     updateDurationSelectorForGroup(groupSelect.value, 'manual-walk-duration');
   };
+
+  if (photoInput && photoPreview && previewImg) {
+    photoInput.onchange = async () => {
+      const file = photoInput.files?.[0];
+      if (file) {
+        const compressed = await compressImageFile(file);
+        if (compressed) {
+          previewImg.src = compressed;
+          photoPreview.style.display = 'block';
+        }
+      }
+    };
+  }
 
   if (session) {
     titleEl.textContent = '✏️ Editar Passeio';
@@ -1012,6 +1031,13 @@ function openManualWalkModal(session = null) {
     if (kmStartInput) kmStartInput.value = (session.kmStart !== null && session.kmStart !== undefined) ? session.kmStart : '';
     if (kmEndInput) kmEndInput.value = (session.kmEnd !== null && session.kmEnd !== undefined) ? session.kmEnd : '';
     notesInput.value = session.notes || '';
+
+    if (session.photo && photoPreview && previewImg) {
+      previewImg.src = session.photo;
+      photoPreview.style.display = 'block';
+    } else if (photoPreview) {
+      photoPreview.style.display = 'none';
+    }
   } else {
     titleEl.textContent = '📝 Lançar Passeio Manual';
     idInput.value = '';
@@ -1024,6 +1050,7 @@ function openManualWalkModal(session = null) {
     if (kmStartInput) kmStartInput.value = '';
     if (kmEndInput) kmEndInput.value = '';
     notesInput.value = '';
+    if (photoPreview) photoPreview.style.display = 'none';
   }
 
   modal.classList.add('active');
@@ -1082,6 +1109,13 @@ function setupManualWalkModal() {
 
         const existingSession = id ? state.sessions.find(s => s.id === id) : null;
 
+        // Processar foto nova anexada no lançamento manual ou manter anterior
+        let photoBase64 = existingSession ? existingSession.photo : null;
+        const photoFile = document.getElementById('manual-walk-photo-input')?.files?.[0];
+        if (photoFile) {
+          photoBase64 = await compressImageFile(photoFile);
+        }
+
         const sessionData = {
           id: id || `sess-${Date.now()}`,
           groupId,
@@ -1095,7 +1129,7 @@ function setupManualWalkModal() {
           kmStart,
           kmEnd,
           kmTotal,
-          photo: existingSession ? existingSession.photo : null
+          photo: photoBase64
         };
 
         await StorageService.saveSession(sessionData);
