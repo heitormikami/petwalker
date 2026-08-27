@@ -3,6 +3,19 @@ import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenti
 import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js';
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone } from './domain/models.js';
 
+export const APP_CONFIG = {
+  version: '2.1.0',
+  build: '2026.08.27',
+  cacheVersion: 'v18'
+};
+
+function renderAppVersionInfo() {
+  const versionEl = document.getElementById('app-version-display');
+  const buildEl = document.getElementById('app-build-display');
+  if (versionEl) versionEl.textContent = APP_CONFIG.version;
+  if (buildEl) buildEl.textContent = `Local-First • Offline Ready • Build ${APP_CONFIG.build} (${APP_CONFIG.cacheVersion})`;
+}
+
 // ESTADO DA APLICAÇÃO
 const state = {
   tutors: [],
@@ -33,6 +46,7 @@ async function initApp() {
     setupEmailPreviewModal();
     setupPhotoViewerModal();
     setupOnlineOfflineStatus();
+    renderAppVersionInfo();
 
     // Recuperar passeio em andamento se o app fechou durante a caminhada (Anti-crash)
     restoreActiveSessionIfAny();
