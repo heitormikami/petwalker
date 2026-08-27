@@ -716,6 +716,42 @@ function setupWalkController() {
 
   if (!btnToggle) return;
 
+  const walkPhotoInput = document.getElementById('walk-photo-input');
+  const walkPhotoPreviewCont = document.getElementById('walk-photo-preview-container');
+  const walkPhotoPreviewImg = document.getElementById('walk-photo-preview-img');
+  const walkPhotoTitle = document.getElementById('walk-photo-title');
+  const walkPhotoSubtitle = document.getElementById('walk-photo-subtitle');
+  const btnRemoveWalkPhoto = document.getElementById('btn-remove-walk-active-photo');
+
+  let activeWalkCompressedPhoto = null;
+
+  if (walkPhotoInput) {
+    walkPhotoInput.addEventListener('change', async () => {
+      const file = walkPhotoInput.files?.[0];
+      if (file) {
+        activeWalkCompressedPhoto = await compressImageFile(file);
+        if (activeWalkCompressedPhoto && walkPhotoPreviewImg && walkPhotoPreviewCont) {
+          walkPhotoPreviewImg.src = activeWalkCompressedPhoto;
+          walkPhotoPreviewCont.style.display = 'block';
+          if (walkPhotoTitle) walkPhotoTitle.textContent = '✅ Foto Anexada';
+          if (walkPhotoSubtitle) walkPhotoSubtitle.textContent = 'Toque para trocar a foto';
+        }
+      }
+    });
+  }
+
+  if (btnRemoveWalkPhoto) {
+    btnRemoveWalkPhoto.addEventListener('click', (e) => {
+      e.preventDefault();
+      activeWalkCompressedPhoto = null;
+      if (walkPhotoInput) walkPhotoInput.value = '';
+      if (walkPhotoPreviewCont) walkPhotoPreviewCont.style.display = 'none';
+      if (walkPhotoPreviewImg) walkPhotoPreviewImg.src = '';
+      if (walkPhotoTitle) walkPhotoTitle.textContent = 'Tirar / Anexar Foto';
+      if (walkPhotoSubtitle) walkPhotoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
+    });
+  }
+
   if (selectGroup) {
     selectGroup.addEventListener('change', () => {
       updateDurationSelectorForGroup(selectGroup.value, 'select-contracted-duration');
@@ -798,12 +834,7 @@ function setupWalkController() {
         const kmEnd = kmEndVal !== '' && !isNaN(kmEndVal) ? Number(kmEndVal) : null;
         const kmTotal = kmStart !== null && kmEnd !== null && kmEnd >= kmStart ? Number((kmEnd - kmStart).toFixed(1)) : null;
 
-        // Processar foto anexada
-        let photoBase64 = null;
-        const photoFile = document.getElementById('walk-photo-input')?.files?.[0];
-        if (photoFile) {
-          photoBase64 = await compressImageFile(photoFile);
-        }
+        const photoBase64 = activeWalkCompressedPhoto;
 
         const completedSession = {
           ...state.activeSession,
@@ -839,7 +870,12 @@ function setupWalkController() {
         const notesEl = document.getElementById('walk-notes-text'); if (notesEl) notesEl.value = '';
         const kmStartEl = document.getElementById('walk-km-start'); if (kmStartEl) kmStartEl.value = '';
         const kmEndEl = document.getElementById('walk-km-end'); if (kmEndEl) kmEndEl.value = '';
-        const photoEl = document.getElementById('walk-photo-input'); if (photoEl) photoEl.value = '';
+        if (walkPhotoInput) walkPhotoInput.value = '';
+        if (walkPhotoPreviewCont) walkPhotoPreviewCont.style.display = 'none';
+        if (walkPhotoPreviewImg) walkPhotoPreviewImg.src = '';
+        if (walkPhotoTitle) walkPhotoTitle.textContent = 'Tirar / Anexar Foto';
+        if (walkPhotoSubtitle) walkPhotoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
+        activeWalkCompressedPhoto = null;
 
         btnToggle.textContent = '🚀 Iniciar Passeio';
         btnToggle.classList.remove('btn-danger');
@@ -1090,8 +1126,25 @@ function openManualWalkModal(session = null) {
   const photoInput = document.getElementById('manual-walk-photo-input');
   const photoPreview = document.getElementById('manual-walk-photo-preview');
   const previewImg = document.getElementById('manual-walk-preview-img');
+  const photoTitle = document.getElementById('manual-walk-photo-title');
+  const photoSubtitle = document.getElementById('manual-walk-photo-subtitle');
+  const btnRemoveManualPhoto = document.getElementById('btn-remove-manual-photo');
+
+  let currentManualPhoto = session ? session.photo : null;
 
   if (photoInput) photoInput.value = '';
+
+  if (btnRemoveManualPhoto) {
+    btnRemoveManualPhoto.onclick = (e) => {
+      e.preventDefault();
+      currentManualPhoto = null;
+      if (photoInput) photoInput.value = '';
+      if (photoPreview) photoPreview.style.display = 'none';
+      if (previewImg) previewImg.src = '';
+      if (photoTitle) photoTitle.textContent = 'Tirar / Anexar Foto';
+      if (photoSubtitle) photoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
+    };
+  }
 
   // Atualizar seletores de grupo
   groupSelect.innerHTML = '<option value="">-- Selecione o Grupo --</option>' +
@@ -1105,10 +1158,12 @@ function openManualWalkModal(session = null) {
     photoInput.onchange = async () => {
       const file = photoInput.files?.[0];
       if (file) {
-        const compressed = await compressImageFile(file);
-        if (compressed) {
-          previewImg.src = compressed;
+        currentManualPhoto = await compressImageFile(file);
+        if (currentManualPhoto) {
+          previewImg.src = currentManualPhoto;
           photoPreview.style.display = 'block';
+          if (photoTitle) photoTitle.textContent = '✅ Foto Anexada';
+          if (photoSubtitle) photoSubtitle.textContent = 'Toque para trocar a foto';
         }
       }
     };
@@ -1128,14 +1183,20 @@ function openManualWalkModal(session = null) {
     notesInput.value = session.notes || '';
 
     if (session.photo && photoPreview && previewImg) {
+      currentManualPhoto = session.photo;
       previewImg.src = session.photo;
       photoPreview.style.display = 'block';
-    } else if (photoPreview) {
-      photoPreview.style.display = 'none';
+      if (photoTitle) photoTitle.textContent = '✅ Foto Anexada';
+      if (photoSubtitle) photoSubtitle.textContent = 'Toque para trocar a foto';
+    } else {
+      if (photoPreview) photoPreview.style.display = 'none';
+      if (photoTitle) photoTitle.textContent = 'Tirar / Anexar Foto';
+      if (photoSubtitle) photoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
     }
   } else {
     titleEl.textContent = '📝 Lançar Passeio Manual';
     idInput.value = '';
+    currentManualPhoto = null;
     const initialGroupId = state.groups.length > 0 ? state.groups[0].id : '';
     groupSelect.value = initialGroupId;
     updateDurationSelectorForGroup(initialGroupId, 'manual-walk-duration');
@@ -1146,6 +1207,8 @@ function openManualWalkModal(session = null) {
     if (kmEndInput) kmEndInput.value = '';
     notesInput.value = '';
     if (photoPreview) photoPreview.style.display = 'none';
+    if (photoTitle) photoTitle.textContent = 'Tirar / Anexar Foto';
+    if (photoSubtitle) photoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
   }
 
   modal.classList.add('active');
@@ -1203,13 +1266,10 @@ function setupManualWalkModal() {
         }
 
         const existingSession = id ? state.sessions.find(s => s.id === id) : null;
-
-        // Processar foto nova anexada no lançamento manual ou manter anterior
-        let photoBase64 = existingSession ? existingSession.photo : null;
-        const photoFile = document.getElementById('manual-walk-photo-input')?.files?.[0];
-        if (photoFile) {
-          photoBase64 = await compressImageFile(photoFile);
-        }
+        const previewImg = document.getElementById('manual-walk-preview-img');
+        const photoPreview = document.getElementById('manual-walk-photo-preview');
+        
+        let photoBase64 = (photoPreview && photoPreview.style.display !== 'none' && previewImg && previewImg.src) ? previewImg.src : null;
 
         const sessionData = {
           id: id || `sess-${Date.now()}`,

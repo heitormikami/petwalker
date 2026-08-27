@@ -144,8 +144,23 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">📷 Foto do Passeio (opcional)</label>
-          <input type="file" class="form-input" id="walk-photo-input" accept="image/*" capture="environment">
+          <label class="form-label">Foto do Passeio</label>
+          <div class="photo-uploader-box">
+            <input type="file" id="walk-photo-input" accept="image/*" style="display: none;">
+            <label for="walk-photo-input" class="photo-uploader-label" id="walk-photo-label" style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 16px; border: 2px dashed var(--primary); border-radius: var(--radius-md); background: var(--bg-cream); cursor: pointer; transition: all 0.2s ease;">
+              <span style="font-size: 1.6rem;">📸</span>
+              <div style="text-align: left;">
+                <div id="walk-photo-title" style="font-weight: 700; font-size: 0.95rem; color: var(--primary);">Tirar / Anexar Foto</div>
+                <div id="walk-photo-subtitle" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 1px;">Toque para abrir a câmera ou galeria</div>
+              </div>
+            </label>
+            <div id="walk-photo-preview-container" style="display: none; margin-top: 10px; text-align: center; position: relative;">
+              <img id="walk-photo-preview-img" src="" alt="Foto anexada" style="max-height: 140px; border-radius: var(--radius-sm); border: 2px solid var(--primary); object-fit: cover; box-shadow: var(--shadow-sm);">
+              <div style="margin-top: 6px;">
+                <button type="button" class="btn btn-danger btn-sm" id="btn-remove-walk-active-photo" style="padding: 3px 10px; font-size: 0.75rem;">✕ Remover Foto</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -517,10 +532,22 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">📷 Foto do Passeio (opcional)</label>
-          <input type="file" class="form-input" id="manual-walk-photo-input" accept="image/*">
-          <div id="manual-walk-photo-preview" style="margin-top: 8px; display: none; text-align: center;">
-            <img id="manual-walk-preview-img" src="" style="max-height: 120px; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover;">
+          <label class="form-label">Foto do Passeio</label>
+          <div class="photo-uploader-box">
+            <input type="file" id="manual-walk-photo-input" accept="image/*" style="display: none;">
+            <label for="manual-walk-photo-input" class="photo-uploader-label" id="manual-walk-photo-label" style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 16px; border: 2px dashed var(--primary); border-radius: var(--radius-md); background: var(--bg-cream); cursor: pointer; transition: all 0.2s ease;">
+              <span style="font-size: 1.6rem;">📸</span>
+              <div style="text-align: left;">
+                <div id="manual-walk-photo-title" style="font-weight: 700; font-size: 0.95rem; color: var(--primary);">Tirar / Anexar Foto</div>
+                <div id="manual-walk-photo-subtitle" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 1px;">Toque para abrir a câmera ou galeria</div>
+              </div>
+            </label>
+            <div id="manual-walk-photo-preview" style="display: none; margin-top: 10px; text-align: center; position: relative;">
+              <img id="manual-walk-preview-img" src="" alt="Foto anexada" style="max-height: 140px; border-radius: var(--radius-sm); border: 2px solid var(--primary); object-fit: cover; box-shadow: var(--shadow-sm);">
+              <div style="margin-top: 6px;">
+                <button type="button" class="btn btn-danger btn-sm" id="btn-remove-manual-photo" style="padding: 3px 10px; font-size: 0.75rem;">✕ Remover Foto</button>
+              </div>
+            </div>
           </div>
         </div>
 
