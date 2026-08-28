@@ -2,52 +2,52 @@
   <defs>
     <!-- Background Vibrant Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF7844" />
-      <stop offset="50%" stop-color="#FF5A1F" />
-      <stop offset="100%" stop-color="#E23E09" />
+      <stop offset="0%" stop-color="#FF7A42" />
+      <stop offset="50%" stop-color="#FF5517" />
+      <stop offset="100%" stop-color="#DE3804" />
     </linearGradient>
 
     <!-- Top Gloss Light -->
     <linearGradient id="glossGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32" />
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
     </linearGradient>
 
     <!-- Paw Symbol Gradient -->
     <linearGradient id="pawGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="100%" stop-color="#FFF3EB" />
+      <stop offset="100%" stop-color="#FFF4ED" />
     </linearGradient>
 
     <!-- Accent Heart Gradient -->
     <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FF7540" />
-      <stop offset="100%" stop-color="#FF4810" />
+      <stop offset="100%" stop-color="#E83D08" />
     </linearGradient>
 
     <!-- Drop Shadow Filter -->
     <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#801C00" flood-opacity="0.32" />
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#6B1600" flood-opacity="0.35" />
     </filter>
     
     <!-- Paw Glow Filter -->
     <filter id="pawShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#731900" flood-opacity="0.28" />
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#6B1600" flood-opacity="0.32" />
     </filter>
   </defs>
 
-  <!-- Base Squircle -->
-  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bgGrad)" filter="url(#softShadow)" />
+  <!-- Base Squircle with drop shadow -->
+  <rect x="20" y="20" width="472" height="472" rx="108" fill="url(#bgGrad)" filter="url(#softShadow)" />
 
   <!-- Inner Subtle Border -->
-  <rect x="18" y="18" width="476" height="476" rx="106" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3" />
+  <rect x="22" y="22" width="468" height="468" rx="106" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="3" />
 
   <!-- Top Glass Highlight Reflection -->
-  <path d="M 16 124 C 16 64 64 16 124 16 L 388 16 C 448 16 496 64 496 124 C 496 160 410 180 256 180 C 102 180 16 160 16 124 Z" fill="url(#glossGrad)" />
+  <path d="M 20 128 C 20 68 68 20 128 20 L 384 20 C 444 20 492 68 492 128 C 492 165 408 190 256 190 C 104 190 20 165 20 128 Z" fill="url(#glossGrad)" />
 
   <!-- Central Paw Emblem -->
   <g filter="url(#pawShadow)" transform="translate(0, 10)">
-    <!-- Main Center Pad (Modern stylized heart-pad) -->
+    <!-- Main Center Pad -->
     <path d="M 256 260 
              C 210 260 165 295 165 350 
              C 165 395 205 425 256 425 
@@ -63,7 +63,7 @@
              L 286 372
              C 304 355 308 335 296 320
              C 286 308 266 308 256 322 Z"
-          fill="url(#heartGrad)" opacity="0.9" />
+          fill="url(#heartGrad)" opacity="0.95" />
 
     <!-- Toe 1: Far Left -->
     <ellipse cx="152" cy="225" rx="34" ry="46" transform="rotate(-28 152 225)" fill="url(#pawGrad)" />
@@ -79,5 +79,6 @@
   </g>
 
   <!-- Sparkle / Star in upper right corner -->
-  <path d="M 405 90 Q 405 115 380 115 Q 405 115 405 140 Q 405 115 430 115 Q 405 115 405 90 Z" fill="#FFFFFF" opacity="0.85" />
+  <path d="M 395 95 Q 395 120 370 120 Q 395 120 395 145 Q 395 120 420 120 Q 395 120 395 95 Z" fill="#FFFFFF" opacity="0.9" />
+  <circle cx="395" cy="120" r="3" fill="#FFFFFF" />
 </svg>

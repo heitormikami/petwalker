@@ -6,7 +6,7 @@ import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, f
 export const APP_CONFIG = {
   version: '2.2.0',
   build: '2026.08.28',
-  cacheVersion: 'v20'
+  cacheVersion: 'v21'
 };
 
 function renderAppVersionInfo() {
