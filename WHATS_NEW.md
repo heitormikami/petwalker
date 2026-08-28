@@ -17,10 +17,13 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 
 ## 🐕 1. Passeios & Rotina na Rua
 
-### 🔔 Alertas Sonoros e Notificações de Tempo
-- **Aviso de 5 minutos antes**: Ao faltarem 5 minutos para o término do passeio (aos 25 min no plano de 30m ou aos 55 min no plano de 60m), o celular emite um **bip suave ascendente**, vibração dupla no bolso e notificação na tela:  
+### 🔔 Alertas Sonoros e Notificações de Tempo (v2.2.0 - Reforço Total)
+- **Aviso de 5 minutos antes**: Ao faltarem 5 minutos para o término do passeio (aos 25 min no plano de 30m ou aos 55 min no plano de 60m), o celular emite um **bip suave ascendente**, vibração dupla no bolso, notificação do sistema na tela de bloqueio e banner visual pulsante no app:  
   *“⏰ Faltam 5 minutos! Prepare o retorno do passeio com [Pets].”*
-- **Aviso de término exato**: Alerta sonoro comemorativo e notificação ao atingir o tempo contratado.
+- **Aviso de término exato**: Alerta sonoro comemorativo, vibração tripla, notificação na tela e banner visual verde ao atingir a duração contratada.
+- **Checagem Retroativa (*Catch-up*)**: Se o celular suspender o navegador durante o bloqueio de tela, assim que a passeadora tocar na tela ou abrir o app, o sistema detecta o marco instantaneamente e dispara o alerta na hora.
+- **Disparo Seguro via Service Worker**: Notificações otimizadas para Android e iOS PWA com persistência na tela (`requireInteraction: true`).
+- **📱 Manter Tela Acesa (*Screen Wake Lock*)**: Opção nas configurações para impedir que a tela bloqueie sozinha enquanto o cronômetro do passeio estiver em andamento.
 - **Cancelamento automático**: Se o passeio for finalizado antes, os alertas futuros são cancelados na hora.
 
 ### 🛡️ Proteção Anti-Crash (Imune a Reinicializações e Queda de Bateria)

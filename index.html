@@ -96,6 +96,7 @@
       <div id="hero-active-state" style="display: none;">
         <span class="badge badge-warning" style="background: rgba(255,255,255,0.25); color: #fff;">Passeio em Andamento</span>
         <div class="timer-display" id="timer-text">00:00:00</div>
+        <div id="walk-milestone-banner" class="walk-milestone-banner"></div>
         <div class="pet-chips" id="active-pets-chips"></div>
       </div>
     </div>
@@ -321,6 +322,16 @@
       <div class="form-group">
         <label class="form-label">Notificações e Alertas de Passeio (5 min e Término)</label>
         <button type="button" class="btn btn-outline btn-full" id="btn-request-notifications">🔔 Testar & Ativar Alertas de Passeio</button>
+      </div>
+
+      <div class="form-group" style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-top: 6px;">
+        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; cursor: pointer;">
+          <span>📱 Manter Tela Acesa no Passeio</span>
+          <input type="checkbox" id="toggle-screen-wake-lock" style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+        </label>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0; line-height: 1.3;">
+          Evita que a tela bloqueie sozinha enquanto o cronômetro do passeio estiver em andamento (opcional).
+        </p>
       </div>
 
       <div class="form-group">

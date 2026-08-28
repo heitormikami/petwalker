@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.1.1',
+  version: '2.2.0',
   build: '2026.08.28',
-  cacheVersion: 'v19'
+  cacheVersion: 'v20'
 };
 
 function renderAppVersionInfo() {
@@ -95,6 +95,7 @@ async function loadAppData() {
   const pendingSync = await StorageService.getSetting('pendingSync');
   const lastSyncTime = await StorageService.getSetting('lastSyncTime');
   const autoBackupEnabled = await StorageService.getSetting('autoBackupEnabled');
+  const keepScreenAwake = await StorageService.getSetting('keepScreenAwake');
 
   state.settings = {
     pinHash,
@@ -104,7 +105,8 @@ async function loadAppData() {
     appTheme,
     pendingSync: pendingSync === true,
     lastSyncTime: lastSyncTime || null,
-    autoBackupEnabled: autoBackupEnabled !== false
+    autoBackupEnabled: autoBackupEnabled !== false,
+    keepScreenAwake: keepScreenAwake === true
   };
 
   applyTheme(appTheme);
@@ -134,6 +136,9 @@ async function loadAppData() {
   }
   if (document.getElementById('toggle-auto-backup')) {
     document.getElementById('toggle-auto-backup').checked = state.settings.autoBackupEnabled;
+  }
+  if (document.getElementById('toggle-screen-wake-lock')) {
+    document.getElementById('toggle-screen-wake-lock').checked = state.settings.keepScreenAwake;
   }
 }
 
@@ -519,6 +524,9 @@ function restoreActiveSessionIfAny() {
     const savedSession = JSON.parse(savedJson);
     if (!savedSession || !savedSession.startTime || !savedSession.groupId) return;
 
+    if (savedSession.warningSent === undefined) savedSession.warningSent = false;
+    if (savedSession.finishSent === undefined) savedSession.finishSent = false;
+
     state.activeSession = savedSession;
 
     const selectGroup = document.getElementById('select-walk-group');
@@ -552,12 +560,45 @@ function restoreActiveSessionIfAny() {
       startTimerDisplay(savedSession.startTime, timerText);
     }
 
-    // Reagendar alertas de 5 minutos e término para o tempo restante
+    if (state.settings.keepScreenAwake) {
+      requestScreenWakeLock();
+    }
+
+    // Reagendar e checar alertas de 5 minutos e término retroativamente
     scheduleWalkAlerts(savedSession);
 
     console.log('Petwalker: Passeio ativo recuperado com sucesso após recarregamento!');
   } catch (e) {
     console.warn('Erro ao restaurar passeio ativo:', e);
+  }
+}
+
+// -------------------------------------------------------------
+// GESTÃO DE TELA ACESA (SCREEN WAKE LOCK API)
+// -------------------------------------------------------------
+let wakeLockSentinel = null;
+
+async function requestScreenWakeLock() {
+  if ('wakeLock' in navigator && state.settings.keepScreenAwake) {
+    try {
+      if (!wakeLockSentinel) {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+          wakeLockSentinel = null;
+        });
+      }
+    } catch (e) {
+      console.warn('Wake Lock não pôde ser ativado:', e);
+    }
+  }
+}
+
+function releaseScreenWakeLock() {
+  if (wakeLockSentinel) {
+    try {
+      wakeLockSentinel.release();
+    } catch (e) {}
+    wakeLockSentinel = null;
   }
 }
 
@@ -577,6 +618,15 @@ function getAudioContext() {
   return audioCtx;
 }
 
+function unlockAudio() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume();
+    }
+  } catch (e) {}
+}
+
 function playChimeSound(type = 'warning') {
   try {
     const ctx = getAudioContext();
@@ -589,7 +639,7 @@ function playChimeSound(type = 'warning') {
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
       osc1.frequency.setValueAtTime(587.33, now); // D5
-      gain1.gain.setValueAtTime(0.18, now);
+      gain1.gain.setValueAtTime(0.22, now);
       gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
@@ -600,7 +650,7 @@ function playChimeSound(type = 'warning') {
       const gain2 = ctx.createGain();
       osc2.type = 'sine';
       osc2.frequency.setValueAtTime(880.00, now + 0.25); // A5
-      gain2.gain.setValueAtTime(0.22, now + 0.25);
+      gain2.gain.setValueAtTime(0.25, now + 0.25);
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
@@ -615,7 +665,7 @@ function playChimeSound(type = 'warning') {
         const gain = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.25, startTime);
+        gain.gain.setValueAtTime(0.28, startTime);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -625,6 +675,54 @@ function playChimeSound(type = 'warning') {
     }
   } catch (err) {
     console.warn('Erro ao reproduzir áudio:', err);
+  }
+}
+
+function updateMilestoneBadge(type, message) {
+  const banner = document.getElementById('walk-milestone-banner');
+  if (!banner) return;
+  banner.className = `walk-milestone-banner ${type}`;
+  banner.textContent = message;
+  banner.style.display = 'block';
+}
+
+function checkWalkMilestones(session) {
+  if (!session || !session.startTime) return;
+
+  const startMs = new Date(session.startTime).getTime();
+  const durationMin = Number(session.contractedDuration || 60);
+  const totalMs = durationMin * 60 * 1000;
+  const warningMs = Math.max(0, (durationMin - 5) * 60 * 1000);
+  const now = Date.now();
+  const elapsedMs = now - startMs;
+  const groupLabel = session.groupName || 'Pets';
+
+  // 1. Alerta de 5 minutos
+  if (elapsedMs >= warningMs && !session.warningSent) {
+    session.warningSent = true;
+    localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
+    sendWalkNotification(
+      '⏰ Faltam 5 minutos!',
+      `O passeio com ${groupLabel} encerra em 5 minutos. Prepare o retorno!`,
+      'warning'
+    );
+    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`);
+  } else if (session.warningSent && !session.finishSent) {
+    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`);
+  }
+
+  // 2. Alerta de Término
+  if (elapsedMs >= totalMs && !session.finishSent) {
+    session.finishSent = true;
+    localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
+    sendWalkNotification(
+      '🏁 Tempo Concluído!',
+      `A duração contratada de ${durationMin} minutos com ${groupLabel} foi atingida. Hora de concluir!`,
+      'finish'
+    );
+    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`);
+  } else if (session.finishSent) {
+    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`);
   }
 }
 
@@ -647,27 +745,32 @@ async function sendWalkNotification(title, body, type = 'warning') {
     } catch (e) {}
   }
 
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const reg = await navigator.serviceWorker.ready;
-        reg.showNotification(title, {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, {
           body,
           icon: 'assets/icon-192.png',
           badge: 'assets/favicon-32x32.png',
           vibrate: type === 'warning' ? [300, 150, 300] : [500, 200, 500],
-          tag: 'walk-alert',
-          renotify: true
+          tag: type === 'warning' ? 'walk-warning' : 'walk-finish',
+          renotify: true,
+          requireInteraction: true,
+          data: { url: './' }
         });
-      } else {
-        new Notification(title, {
-          body,
-          icon: 'assets/icon-192.png'
-        });
+        return;
       }
-    } catch (err) {
-      console.warn('Erro ao disparar notificação:', err);
     }
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: 'assets/icon-192.png'
+      });
+    }
+  } catch (err) {
+    console.warn('Alerta Petwalker: falha no push do sistema:', err);
   }
 }
 
@@ -691,27 +794,21 @@ function scheduleWalkAlerts(session) {
 
   const warningDelay = (startMs + warningMs) - now;
   const finishDelay = (startMs + totalMs) - now;
-  const groupLabel = session.groupName || 'Pets';
+
+  // Checagem imediata retroativa para quando a tela acorda ou app reabre
+  checkWalkMilestones(session);
 
   state.walkAlertTimers = {};
 
-  if (warningDelay > 0) {
+  if (warningDelay > 0 && !session.warningSent) {
     state.walkAlertTimers.warning = setTimeout(() => {
-      sendWalkNotification(
-        '⏰ Faltam 5 minutos!',
-        `O passeio com ${groupLabel} encerra em 5 minutos. Prepare o retorno!`,
-        'warning'
-      );
+      checkWalkMilestones(session);
     }, warningDelay);
   }
 
-  if (finishDelay > 0) {
+  if (finishDelay > 0 && !session.finishSent) {
     state.walkAlertTimers.finish = setTimeout(() => {
-      sendWalkNotification(
-        '🏁 Tempo Concluído!',
-        `A duração contratada de ${durationMin} minutos com ${groupLabel} foi atingida. Hora de concluir!`,
-        'finish'
-      );
+      checkWalkMilestones(session);
     }, finishDelay);
   }
 }
@@ -785,20 +882,34 @@ function setupWalkController() {
         const group = state.groups.find(g => g.id === groupId);
         const groupPets = state.pets.filter(p => p.groupId === groupId);
 
+        unlockAudio();
+        requestNotificationPermission();
+
+        if (state.settings.keepScreenAwake) {
+          requestScreenWakeLock();
+        }
+
+        const milestoneBanner = document.getElementById('walk-milestone-banner');
+        if (milestoneBanner) {
+          milestoneBanner.style.display = 'none';
+          milestoneBanner.textContent = '';
+        }
+
         state.activeSession = {
           id: `sess-${Date.now()}`,
           groupId,
           groupName: group ? group.name : 'Grupo',
           startTime: new Date().toISOString(),
           contractedDuration: Number(document.getElementById('select-contracted-duration')?.value || 60),
-          pets: groupPets.map(p => p.name)
+          pets: groupPets.map(p => p.name),
+          warningSent: false,
+          finishSent: false
         };
 
         // Salvar cópia local anti-crash
         localStorage.setItem('petwalker_active_walk', JSON.stringify(state.activeSession));
 
-        // Solicitar permissão de notificação se necessário e agendar alertas
-        requestNotificationPermission();
+        // Agendar e checar alertas
         scheduleWalkAlerts(state.activeSession);
 
         // Atualizar UI para Estado Ativo
@@ -821,6 +932,13 @@ function setupWalkController() {
         // CONCLUIR PASSEIO
         if (state.timerInterval) clearInterval(state.timerInterval);
         clearWalkAlerts();
+        releaseScreenWakeLock();
+
+        const milestoneBanner = document.getElementById('walk-milestone-banner');
+        if (milestoneBanner) {
+          milestoneBanner.style.display = 'none';
+          milestoneBanner.textContent = '';
+        }
 
         const endTime = new Date().toISOString();
         const notesArray = [];
@@ -911,7 +1029,8 @@ function startTimerDisplay(startTimeIso, element) {
   const startMs = new Date(startTimeIso).getTime();
 
   function update() {
-    const diffMs = Math.max(0, Date.now() - startMs);
+    const now = Date.now();
+    const diffMs = Math.max(0, now - startMs);
     const secs = Math.floor((diffMs / 1000) % 60);
     const mins = Math.floor((diffMs / (1000 * 60)) % 60);
     const hrs = Math.floor(diffMs / (1000 * 60 * 60));
@@ -919,9 +1038,14 @@ function startTimerDisplay(startTimeIso, element) {
     if (element) {
       element.textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
+
+    if (state.activeSession) {
+      checkWalkMilestones(state.activeSession);
+    }
   }
 
   update();
+  if (state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = setInterval(update, 1000);
 }
 
@@ -1988,15 +2112,32 @@ function setupSettingsController() {
   const btnReqNotif = document.getElementById('btn-request-notifications');
   if (btnReqNotif) {
     btnReqNotif.addEventListener('click', async () => {
-      const perm = await requestNotificationPermission();
+      unlockAudio();
       playChimeSound('finish');
+      const perm = await requestNotificationPermission();
       if (perm === 'granted') {
-        sendWalkNotification('🔔 Alertas Ativados!', 'As notificações de 5 minutos e término de passeio estão ativas.', 'finish');
-        alert('✅ Notificações e alertas sonoros ativados com sucesso!');
+        await sendWalkNotification('🔔 Alertas Ativados!', 'As notificações de 5 minutos e término de passeio estão ativas.', 'finish');
+        alert('✅ Notificações e alertas sonoros ativados com sucesso! Você receberá avisos sonoros e notificações na tela.');
       } else if (perm === 'denied') {
         alert('⚠️ As notificações estão bloqueadas nas configurações do navegador/celular. Para receber no iPhone, adicione o PWA à Tela de Início.');
       } else {
-        alert('🔔 Alerta sonoro testado! No iPhone, adicione à Tela de Início para receber notificações na tela de bloqueio.');
+        alert('🔔 Alerta sonoro testado! No iPhone, certifique-se de adicionar o Petwalker à Tela de Início (Compartilhar > Adicionar à Tela de Início) para receber notificações na tela de bloqueio.');
+      }
+    });
+  }
+
+  const toggleWakeLock = document.getElementById('toggle-screen-wake-lock');
+  if (toggleWakeLock) {
+    toggleWakeLock.addEventListener('change', async () => {
+      const isEnabled = toggleWakeLock.checked;
+      await StorageService.saveSetting('keepScreenAwake', isEnabled);
+      state.settings.keepScreenAwake = isEnabled;
+      if (state.activeSession) {
+        if (isEnabled) {
+          requestScreenWakeLock();
+        } else {
+          releaseScreenWakeLock();
+        }
       }
     });
   }
@@ -2017,16 +2158,19 @@ function setupSettingsController() {
       const googleUrl = document.getElementById('input-setting-google').value.trim();
       const theme = selectTheme ? selectTheme.value : 'auto';
       const autoBackup = toggleAutoBackup ? toggleAutoBackup.checked : true;
+      const keepAwake = toggleWakeLock ? toggleWakeLock.checked : false;
 
       await StorageService.saveSetting('pixKey', pix);
       await StorageService.saveSetting('googleScriptUrl', googleUrl);
       await StorageService.saveSetting('appTheme', theme);
       await StorageService.saveSetting('autoBackupEnabled', autoBackup);
+      await StorageService.saveSetting('keepScreenAwake', keepAwake);
 
       state.settings.pixKey = pix;
       state.settings.googleScriptUrl = googleUrl;
       state.settings.appTheme = theme;
       state.settings.autoBackupEnabled = autoBackup;
+      state.settings.keepScreenAwake = keepAwake;
       applyTheme(theme);
       updateSyncStatusBadge();
       alert('Configurações salvas com sucesso!');
@@ -2257,6 +2401,18 @@ function setupOnlineOfflineStatus() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       triggerAutoSyncIfEligible('app_focus');
+      if (state.activeSession) {
+        checkWalkMilestones(state.activeSession);
+        if (state.settings.keepScreenAwake) {
+          requestScreenWakeLock();
+        }
+      }
+    }
+  });
+
+  window.addEventListener('pageshow', () => {
+    if (state.activeSession) {
+      checkWalkMilestones(state.activeSession);
     }
   });
 
