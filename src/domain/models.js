@@ -22,6 +22,35 @@ export function calculateSessionCost(group, durationMinutes) {
 }
 
 /**
+ * Retorna a data no fuso horário local do usuário no formato "YYYY-MM-DD"
+ * Evita o bug de UTC que adianta 1 dia após as 21h no Brasil (UTC-3).
+ * @param {Date|string|number} [d=new Date()]
+ * @returns {string} "YYYY-MM-DD"
+ */
+export function getLocalDateString(d = new Date()) {
+  if (!d) return '';
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.trim())) {
+    return d.trim();
+  }
+  const date = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Retorna o mês/ano no fuso horário local no formato "YYYY-MM"
+ * @param {Date|string|number} [d=new Date()]
+ * @returns {string} "YYYY-MM"
+ */
+export function getLocalDateMonth(d = new Date()) {
+  const str = getLocalDateString(d);
+  return str ? str.substring(0, 7) : '';
+}
+
+/**
  * Apura a Fatura Mensal para um Tutor específico.
  * @param {Object} tutor 
  * @param {Array<Object>} groups 
@@ -38,7 +67,7 @@ export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [
   // Filtrar sessões do período e dos grupos do tutor
   const periodSessions = (sessions || []).filter(s => {
     if (!tutorGroupIds.has(s.groupId)) return false;
-    const sessionMonthKey = s.date ? s.date.substring(0, 7) : '';
+    const sessionMonthKey = getLocalDateMonth(s.date || s.startTime);
     return sessionMonthKey === monthYearKey;
   });
 

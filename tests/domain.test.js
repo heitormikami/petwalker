@@ -5,7 +5,9 @@ import {
   calculateMonthlyInvoice,
   formatWhatsAppSummary,
   formatEmailHtml,
-  formatWhatsAppPhone
+  formatWhatsAppPhone,
+  getLocalDateString,
+  getLocalDateMonth
 } from '../src/domain/models.js';
 
 test('calculateSessionCost - 30 minutos', () => {
@@ -196,6 +198,27 @@ test('hashPin & verifyPin - hashing SHA-256 e validação consistente em qualque
 
   assert.equal(isCorrect, true);
   assert.equal(isWrong, false);
+});
+
+test('getLocalDateString & getLocalDateMonth - imune a distorções de fuso horário UTC perto da meia-noite', () => {
+  // Teste 1: String YYYY-MM-DD já formatada
+  assert.equal(getLocalDateString('2026-08-27'), '2026-08-27');
+  assert.equal(getLocalDateMonth('2026-08-27'), '2026-08');
+
+  // Teste 2: Instância Date local às 21:30 (em UTC seria dia 28, mas localmente é dia 27)
+  const lateNightDate = new Date(2026, 7, 27, 21, 30, 0); // 27 de Agosto de 2026 às 21:30 local
+  assert.equal(getLocalDateString(lateNightDate), '2026-08-27');
+  assert.equal(getLocalDateMonth(lateNightDate), '2026-08');
+
+  // Teste 3: Instância Date local às 23:59
+  const almostMidnight = new Date(2026, 7, 27, 23, 59, 59);
+  assert.equal(getLocalDateString(almostMidnight), '2026-08-27');
+  assert.equal(getLocalDateMonth(almostMidnight), '2026-08');
+
+  // Teste 4: Instância Date local no primeiro minuto do dia seguinte às 00:01
+  const earlyMorning = new Date(2026, 7, 28, 0, 1, 0);
+  assert.equal(getLocalDateString(earlyMorning), '2026-08-28');
+  assert.equal(getLocalDateMonth(earlyMorning), '2026-08');
 });
 
 

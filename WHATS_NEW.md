@@ -44,11 +44,13 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
   - **🗑️ Excluir Foto**: Remove a foto daquele passeio com 1 toque.
   - **✖️ Fechar**: Botão no topo e no rodapé para fechar a visualização.
 
-### 📅 Barra de Navegação de Datas Compacta (Pill Bar)
+### 📅 Barra de Navegação de Datas Compacta (Pill Bar) & Correção de Fuso Horário
 - Barra de navegação em formato de cápsula fina (*pill*) no topo do Diário:
   - Botões circulares limpos `[ ◀ ]` e `[ ▶ ]`.
   - Campo de data centralizado sem quebra de linhas.
   - Atalho rápido `[ Hoje ]` para retorno imediato ao dia atual.
+- **Correção de Fuso Horário Noturno (Fim do bug das 21h/UTC)**:
+  - Corrigido o cálculo de datas locais (`getLocalDateString`). Anteriormente, o uso de conversões em UTC adiantava a data para o dia seguinte a partir das 21h00 no horário de Brasília (UTC-3). Agora o app respeita estritamente o dia civil local em qualquer horário!
 
 ### 📱 Importação Direta de Contatos da Agenda
 - Botão **"📱 Importar Contato"** no cadastro de Tutores, permitindo preencher Nome, Telefone e E-mail automaticamente através da agenda nativa do aparelho.

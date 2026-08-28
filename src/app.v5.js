@@ -1,12 +1,12 @@
 import { StorageService } from './services/storage.js';
 import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js';
 import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone } from './domain/models.js';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.1.0',
-  build: '2026.08.27',
-  cacheVersion: 'v18'
+  version: '2.1.1',
+  build: '2026.08.28',
+  cacheVersion: 'v19'
 };
 
 function renderAppVersionInfo() {
@@ -853,7 +853,7 @@ function setupWalkController() {
         const completedSession = {
           ...state.activeSession,
           endTime,
-          date: state.activeSession.startTime,
+          date: getLocalDateString(state.activeSession.startTime),
           cost: Number(sessionCost) || 0,
           notes: notesArray.join(' | '),
           kmStart,
@@ -987,7 +987,7 @@ function updateGroupDropdown() {
 function setupDailyView() {
   const dateInput = document.getElementById('filter-daily-date');
   if (dateInput) {
-    dateInput.value = new Date().toISOString().substring(0, 10);
+    dateInput.value = getLocalDateString();
     dateInput.addEventListener('change', renderDailyView);
   }
 
@@ -998,9 +998,11 @@ function setupDailyView() {
 
   function changeDateOffset(days) {
     if (!dateInput) return;
-    const current = new Date(dateInput.value + 'T12:00:00');
+    const baseStr = dateInput.value || getLocalDateString();
+    const [y, m, d] = baseStr.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
     current.setDate(current.getDate() + days);
-    dateInput.value = current.toISOString().substring(0, 10);
+    dateInput.value = getLocalDateString(current);
     renderDailyView();
   }
 
@@ -1008,7 +1010,7 @@ function setupDailyView() {
   if (btnNext) btnNext.addEventListener('click', () => changeDateOffset(1));
   if (btnToday) btnToday.addEventListener('click', () => {
     if (dateInput) {
-      dateInput.value = new Date().toISOString().substring(0, 10);
+      dateInput.value = getLocalDateString();
       renderDailyView();
     }
   });
@@ -1048,7 +1050,7 @@ function setupDailyView() {
 
 function renderDailyView() {
   const dateInput = document.getElementById('filter-daily-date');
-  const targetDateStr = dateInput ? dateInput.value : new Date().toISOString().substring(0, 10);
+  const targetDateStr = dateInput && dateInput.value ? dateInput.value : getLocalDateString();
   const targetMonthStr = targetDateStr.substring(0, 7); // YYYY-MM
   const listEl = document.getElementById('daily-sessions-list');
   const countEl = document.getElementById('stat-daily-count');
@@ -1058,9 +1060,9 @@ function renderDailyView() {
 
   if (!listEl) return;
 
-  // Filtrar sessões do dia e do mês
-  const daySessions = state.sessions.filter(s => s.date && s.date.substring(0, 10) === targetDateStr);
-  const monthSessions = state.sessions.filter(s => s.date && s.date.substring(0, 7) === targetMonthStr);
+  // Filtrar sessões do dia e do mês utilizando fuso horário local
+  const daySessions = state.sessions.filter(s => getLocalDateString(s.date || s.startTime) === targetDateStr);
+  const monthSessions = state.sessions.filter(s => getLocalDateMonth(s.date || s.startTime) === targetMonthStr);
 
   // Nome do Mês Formatado
   const [year, month] = targetMonthStr.split('-');
@@ -1188,7 +1190,7 @@ function openManualWalkModal(session = null) {
     idInput.value = session.id;
     groupSelect.value = session.groupId;
     updateDurationSelectorForGroup(session.groupId, 'manual-walk-duration');
-    dateInput.value = session.date ? session.date.substring(0, 10) : new Date().toISOString().substring(0, 10);
+    dateInput.value = session.date ? getLocalDateString(session.date) : getLocalDateString();
     startInput.value = session.startTime ? new Date(session.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '10:00';
     endInput.value = session.endTime ? new Date(session.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '11:00';
     durationSelect.value = session.contractedDuration || 60;
@@ -1214,7 +1216,7 @@ function openManualWalkModal(session = null) {
     const initialGroupId = state.groups.length > 0 ? state.groups[0].id : '';
     groupSelect.value = initialGroupId;
     updateDurationSelectorForGroup(initialGroupId, 'manual-walk-duration');
-    dateInput.value = document.getElementById('filter-daily-date')?.value || new Date().toISOString().substring(0, 10);
+    dateInput.value = document.getElementById('filter-daily-date')?.value || getLocalDateString();
     startInput.value = '10:00';
     endInput.value = '11:00';
     if (kmStartInput) kmStartInput.value = '';
@@ -1248,7 +1250,7 @@ function setupManualWalkModal() {
       try {
         const id = document.getElementById('manual-walk-id')?.value;
         const groupId = document.getElementById('manual-walk-group')?.value;
-        const dateStr = document.getElementById('manual-walk-date')?.value || new Date().toISOString().substring(0, 10);
+        const dateStr = document.getElementById('manual-walk-date')?.value || getLocalDateString();
         const startTimeStr = document.getElementById('manual-walk-start')?.value || '10:00';
         const endTimeStr = document.getElementById('manual-walk-end')?.value || '11:00';
         const duration = Number(document.getElementById('manual-walk-duration')?.value || 60);
@@ -1595,7 +1597,7 @@ function setupInvoiceManager() {
   const btnWa = document.getElementById('btn-share-whatsapp');
 
   if (monthPicker) {
-    monthPicker.value = new Date().toISOString().substring(0, 7);
+    monthPicker.value = getLocalDateMonth();
     monthPicker.addEventListener('change', renderInvoiceView);
   }
 
@@ -2105,7 +2107,7 @@ function setupSettingsController() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-petwalker-${new Date().toISOString().substring(0, 10)}.json`;
+      a.download = `backup-petwalker-${getLocalDateString()}.json`;
       a.click();
       URL.revokeObjectURL(url);
     });

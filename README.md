@@ -47,7 +47,7 @@
 - **Frontend Core**: Vanilla HTML5, Modern CSS (Design System com temas Claro/Escuro, HSL e Variáveis CSS) e Vanilla JavaScript (ES Modules).
 - **Armazenamento**: IndexedDB local-first (`StorageService`).
 - **Segurança**: Web Crypto API + Pure JS SHA-256 Fallback e WebAuthn.
-- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v18` para execução 100% offline e notificações.
+- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v19` para execução 100% offline e notificações.
 - **Cloud Backend**: Google Apps Script (Drive API + Gmail API).
 
 ---
