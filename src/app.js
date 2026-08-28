@@ -1211,9 +1211,14 @@ function renderDailyView() {
   if (timeEl) timeEl.textContent = `${hrs}h ${mins}m`;
 
   if (daySessions.length === 0) {
-    listEl.innerHTML = '<li style="text-align: center; color: var(--text-muted); padding: 24px 0;">Nenhum passeio registrado nesta data.</li>';
+    listEl.innerHTML = '';
+    const emptyState = document.getElementById('daily-empty-state');
+    if (emptyState) emptyState.style.display = 'block';
     return;
   }
+  const emptyState = document.getElementById('daily-empty-state');
+  if (emptyState) emptyState.style.display = 'none';
+
 
   listEl.innerHTML = daySessions.map(s => {
     const startFormatted = s.startTime ? new Date(s.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
@@ -1368,6 +1373,15 @@ function setupManualWalkModal() {
   if (btnOpenHome) btnOpenHome.addEventListener('click', () => openManualWalkModal());
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
 
+  // Botão ✕ no header do modal (auditoria UI)
+  const btnCloseX = document.getElementById('btn-close-walk-modal-x');
+  if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
+
+  // Empty state CTA no Diário → abre modal de lançamento manual
+  const btnEmptyCta = document.getElementById('btn-daily-empty-cta');
+  if (btnEmptyCta) btnEmptyCta.addEventListener('click', () => openManualWalkModal());
+
+
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1472,6 +1486,11 @@ function setupTutorManager() {
   }
 
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+
+  // Novo botão ✕ no header do modal (auditoria UI)
+  const btnCloseX = document.getElementById('btn-close-tutor-modal-x');
+  if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
+
 
   const btnPickContact = document.getElementById('btn-pick-contact');
   if (btnPickContact) {
@@ -1822,6 +1841,11 @@ function setupEmailPreviewModal() {
   const btnGmailWeb = document.getElementById('btn-open-in-gmail-web');
 
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+
+  // Botão ✕ no header do modal (auditoria UI)
+  const btnCloseX = document.getElementById('btn-close-email-modal-x');
+  if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
+
 
   if (btnSendGoogle) {
     btnSendGoogle.addEventListener('click', async () => {

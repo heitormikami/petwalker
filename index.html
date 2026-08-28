@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Petwalker - Gestão de Passeios</title>
   <meta name="theme-color" content="#FF6633">
   <meta name="description" content="App PWA para registro de passeios de cães, relatórios e fechamento de cobranças.">
@@ -71,9 +71,7 @@
   <!-- Header Superior -->
   <header class="app-header">
     <div class="brand-logo">
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2a3 3 0 0 0-3 3 3 3 0 0 0 6 0 3 3 0 0 0-3-3zm-5 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm10 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm15 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm-7.5-2c-3.5 0-6 2.5-6 6 0 2.5 2 4 6 4s6-1.5 6-4c0-3.5-2.5-6-6-6z"/>
-      </svg>
+      <img src="assets/favicon.svg" width="36" height="36" alt="Petwalker" style="border-radius: 8px; flex-shrink: 0;">
       <div>
         <div class="brand-name">Petwalker</div>
         <div class="brand-subtitle">Registro de Passeios</div>
@@ -89,8 +87,8 @@
     <!-- Hero / Passeio Ativo -->
     <div class="timer-hero" id="timer-hero">
       <div id="hero-idle-state">
-        <div style="font-size: 1.1rem; opacity: 0.9;">Pronta para passear? 🐾</div>
-        <p style="font-size: 0.85rem; margin-top: 4px; opacity: 0.8;">Selecione o grupo e inicie o cronômetro.</p>
+        <div style="font-size: 1.1rem; color: rgba(255,255,255,0.95); font-weight: 600;">Pronta para passear? 🐾</div>
+        <p style="font-size: 0.85rem; margin-top: 4px; color: rgba(255,255,255,0.88);">Selecione o grupo e inicie o cronômetro.</p>
       </div>
 
       <div id="hero-active-state" style="display: none;">
@@ -220,6 +218,13 @@
       <ul class="item-list" id="daily-sessions-list">
         <!-- Inserido dinamicamente -->
       </ul>
+      <!-- Empty State — renderizado via JS quando não há sessões -->
+      <div id="daily-empty-state" class="empty-state" style="display:none;">
+        <span class="empty-state-icon">🐕</span>
+        <div class="empty-state-title">Dia livre de passeios!</div>
+        <p class="empty-state-desc">Nenhum passeio foi registrado nesta data.<br>Que tal lançar um retroativo?</p>
+        <button class="btn btn-primary btn-sm" id="btn-daily-empty-cta">+ Lançar Passeio</button>
+      </div>
     </div>
   </main>
 
@@ -280,79 +285,116 @@
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <button class="btn btn-outline btn-full" id="btn-add-adjustment">+ Adicionar Crédito / Débito</button>
           <button class="btn btn-primary btn-full" id="btn-share-whatsapp">💬 Enviar Resumo por WhatsApp</button>
-          <button class="btn btn-secondary btn-full" id="btn-preview-email">👁️ Revisar & Enviar Fatura por E-mail</button>
+          <button class="btn btn-secondary btn-full" id="btn-preview-email">👁️ Revisar &amp; Enviar Fatura por E-mail</button>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- VIEW 5: CONFIGURAÇÕES -->
   <main id="view-settings" class="view">
     <div class="card">
-      <div class="form-group">
-        <label class="form-label">Tema Visual da Aplicação</label>
-        <select class="form-select" id="select-app-theme">
-          <option value="auto">⚙️ Automático (Tema do Sistema)</option>
-          <option value="light">☀️ Modo Claro (Creme Original Petwalker)</option>
-          <option value="dark">🌙 Modo Escuro (Dark Mode)</option>
-        </select>
+
+      <!-- SEÇÃO: APARÊNCIA -->
+      <div class="settings-section">
+        <div class="settings-section-header">🎨 Aparência</div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Tema Visual</label>
+          <select class="form-select" id="select-app-theme">
+            <option value="auto">⚙️ Automático (Tema do Sistema)</option>
+            <option value="light">☀️ Modo Claro</option>
+            <option value="dark">🌙 Modo Escuro</option>
+          </select>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>PIN de Segurança (4 dígitos)</span>
-          <span id="badge-pin-status" class="badge" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill);">Não cadastrado</span>
-        </label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <div style="position: relative; flex: 1;">
-            <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 38px;">
-            <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN">👁️</button>
+      <!-- SEÇÃO: SEGURANÇA -->
+      <div class="settings-section">
+        <div class="settings-section-header">🔒 Segurança</div>
+
+        <div class="form-group">
+          <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>PIN de Segurança (4 dígitos)</span>
+            <span id="badge-pin-status" class="badge" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill);">Não cadastrado</span>
+          </label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="position: relative; flex: 1;">
+              <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 38px;">
+              <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN">👁️</button>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
+            <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none;" title="Remover PIN">Remover</button>
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
-          <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none;" title="Remover PIN">Remover</button>
+          <div id="pin-status-info" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;"></div>
         </div>
-        <div id="pin-status-info" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;"></div>
-      </div>
 
-      <div class="form-group">
-        <label class="form-label">Biometria do Celular (WebAuthn)</label>
-        <button class="btn btn-outline btn-full" id="btn-register-bio">👆 Cadastrar Biometria Nativa</button>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Notificações e Alertas de Passeio (5 min e Término)</label>
-        <button type="button" class="btn btn-outline btn-full" id="btn-request-notifications">🔔 Testar & Ativar Alertas de Passeio</button>
-      </div>
-
-      <div class="form-group" style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-top: 6px;">
-        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; cursor: pointer;">
-          <span>📱 Manter Tela Acesa no Passeio</span>
-          <input type="checkbox" id="toggle-screen-wake-lock" style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
-        </label>
-        <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0; line-height: 1.3;">
-          Evita que a tela bloqueie sozinha enquanto o cronômetro do passeio estiver em andamento (opcional).
-        </p>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Chave PIX para Faturas</label>
-        <input type="text" class="form-input" id="input-setting-pix" placeholder="E-mail, telefone ou CPF">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">URL do Google Apps Script (Drive + Gmail)</label>
-        <input type="url" class="form-input" id="input-setting-google" placeholder="https://script.google.com/macros/s/.../exec">
-      </div>
-
-      <div class="form-group" style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-top: 6px;">
-        <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; cursor: pointer;">
-          <span>☁️ Auto-Backup Inteligente (Wi-Fi)</span>
-          <input type="checkbox" id="toggle-auto-backup" checked style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
-        </label>
-        <div id="sync-status-badge" style="font-size: 0.78rem; color: var(--text-muted);">
-          Status: <span id="sync-status-text" style="font-weight: 600; color: var(--text-main);">Verificando alterações...</span>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Biometria do Celular (WebAuthn)</label>
+          <button class="btn btn-outline btn-full" id="btn-register-bio">👆 Cadastrar Biometria Nativa</button>
         </div>
       </div>
+
+      <!-- SEÇÃO: NOTIFICAÇÕES -->
+      <div class="settings-section">
+        <div class="settings-section-header">🔔 Notificações</div>
+
+        <div class="form-group">
+          <label class="form-label">🔔 Alertas de Passeio</label>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Aviso sonoro e visual aos 5 min antes e no término do passeio contratado.</p>
+          <button type="button" class="btn btn-outline btn-full" id="btn-request-notifications">🔔 Testar &amp; Ativar Alertas</button>
+        </div>
+
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm);">
+          <label class="toggle-row" for="toggle-screen-wake-lock" style="cursor:pointer;">
+            <div class="toggle-row-info">
+              <div class="toggle-row-title">📱 Manter Tela Acesa</div>
+              <div class="toggle-row-desc">Evita que a tela bloqueie durante o cronômetro do passeio.</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="toggle-screen-wake-lock">
+              <span class="ios-switch-track"></span>
+              <span class="ios-switch-thumb"></span>
+            </label>
+          </label>
+        </div>
+      </div>
+
+      <!-- SEÇÃO: PAGAMENTOS -->
+      <div class="settings-section">
+        <div class="settings-section-header">💰 Pagamentos</div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Chave PIX para Faturas</label>
+          <input type="text" class="form-input" id="input-setting-pix" placeholder="E-mail, telefone ou CPF">
+        </div>
+      </div>
+
+      <!-- SEÇÃO: SINCRONIZAÇÃO -->
+      <div class="settings-section">
+        <div class="settings-section-header">☁️ Sincronização</div>
+
+        <div class="form-group">
+          <label class="form-label">URL do Google Apps Script</label>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Conecta ao Google Drive (backup) e Gmail (envio de faturas).</p>
+          <input type="url" class="form-input" id="input-setting-google" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm);">
+          <label class="toggle-row" for="toggle-auto-backup" style="cursor:pointer;">
+            <div class="toggle-row-info">
+              <div class="toggle-row-title">☁️ Auto-Backup Inteligente</div>
+              <div class="toggle-row-desc">Salva automaticamente no Google Drive quando há Wi-Fi.</div>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="toggle-auto-backup" checked>
+              <span class="ios-switch-track"></span>
+              <span class="ios-switch-thumb"></span>
+            </label>
+          </label>
+          <div id="sync-status-badge" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+            Status: <span id="sync-status-text" style="font-weight: 600; color: var(--text-main);">Verificando alterações...</span>
+          </div>
+        </div>
+      </div>
+
 
       <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
         <button class="btn btn-primary btn-full" id="btn-save-settings">Salvar Configurações</button>
@@ -414,11 +456,12 @@
   <!-- MODAL TUTOR / GRUPO -->
   <div id="modal-tutor" class="modal-overlay">
     <div class="modal-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 class="card-title" id="modal-tutor-title" style="margin-bottom: 0;">Cadastrar Novo Tutor</h3>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-pick-contact" title="Importar da agenda do celular" style="display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 700; padding: 6px 10px;">
-          📱 Importar Contato
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+        <h3 class="card-title" id="modal-tutor-title" style="margin-bottom: 0; flex: 1;">Cadastrar Novo Tutor</h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-pick-contact" title="Importar da agenda do celular" style="display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 700; padding: 6px 10px; white-space: nowrap;">
+          📱 Importar
         </button>
+        <button type="button" class="modal-close-btn" id="btn-close-tutor-modal-x" title="Fechar">✕</button>
       </div>
       <form id="form-tutor">
         <input type="hidden" id="tutor-id">
@@ -494,7 +537,10 @@
   <!-- MODAL LANÇAMENTO / EDIÇÃO MANUAL DE PASSEIO -->
   <div id="modal-manual-walk" class="modal-overlay">
     <div class="modal-card">
-      <h3 class="card-title" id="modal-walk-title">📝 Lançar / Editar Passeio</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" id="modal-walk-title" style="margin-bottom: 0;">📝 Lançar / Editar Passeio</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-walk-modal-x" title="Fechar">✕</button>
+      </div>
       <form id="form-manual-walk">
         <input type="hidden" id="manual-walk-id">
 
@@ -573,7 +619,10 @@
   <!-- MODAL DE PRÉ-VISUALIZAÇÃO E EDIÇÃO DE E-MAIL -->
   <div id="modal-email-preview" class="modal-overlay">
     <div class="modal-card" style="max-width: 650px;">
-      <h3 class="card-title">👁️ Revisar Fatura & Mensagem para o Tutor</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" style="margin-bottom: 0;">👁️ Revisar Fatura &amp; Mensagem</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-email-modal-x" title="Fechar">✕</button>
+      </div>
       
       <div class="form-group">
         <label class="form-label">💌 Mensagem Carinhosa Personalizada (opcional)</label>
@@ -600,7 +649,10 @@
   <!-- MODAL DE SELEÇÃO E RESTAURAÇÃO DE BACKUPS HISTÓRICOS -->
   <div id="modal-restore-backup" class="modal-overlay">
     <div class="modal-card" style="max-width: 600px;">
-      <h3 class="card-title">🔄 Selecionar Versão para Restaurar</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" style="margin-bottom: 0;">🔄 Selecionar Backup</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-restore-modal-x" title="Fechar">✕</button>
+      </div>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
         Escolha qual arquivo de backup salvo na pasta <strong>Petwalker_Backups</strong> do Google Drive deseja restaurar:
       </p>
