@@ -372,15 +372,51 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .walk-milestone-banner {
   display: none;
-  margin: 8px auto 12px;
-  padding: 8px 16px;
+  margin: 10px auto 12px;
+  padding: 8px 10px 8px 16px;
   border-radius: var(--radius-pill);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
   max-width: 95%;
   animation: pulse-milestone 2s infinite ease-in-out;
   box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.walk-milestone-banner span {
+  flex: 1;
+  line-height: 1.3;
+}
+
+.milestone-close-btn {
+  background: rgba(0, 0, 0, 0.12);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.8;
+  transition: var(--transition);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.milestone-close-btn:hover,
+.milestone-close-btn:active {
+  opacity: 1;
+  transform: scale(1.12);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .walk-milestone-banner.halfway {

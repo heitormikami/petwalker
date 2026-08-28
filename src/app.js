@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.3.0',
+  version: '2.3.1',
   build: '2026.08.28',
-  cacheVersion: 'v22'
+  cacheVersion: 'v23'
 };
 
 function renderAppVersionInfo() {
@@ -701,12 +701,36 @@ function playChimeSound(type = 'warning') {
   }
 }
 
-function updateMilestoneBadge(type, message) {
+function dismissMilestoneBadge(session = null) {
   const banner = document.getElementById('walk-milestone-banner');
+  if (banner) {
+    banner.style.display = 'none';
+  }
+  const currentSession = session || state.activeSession;
+  if (currentSession && banner && banner.dataset.milestoneType) {
+    currentSession.dismissedMilestone = banner.dataset.milestoneType;
+    localStorage.setItem('petwalker_active_walk', JSON.stringify(currentSession));
+  }
+}
+
+function updateMilestoneBadge(type, message, session = null) {
+  const currentSession = session || state.activeSession;
+  if (currentSession && currentSession.dismissedMilestone === type) {
+    return;
+  }
+
+  const banner = document.getElementById('walk-milestone-banner');
+  const textEl = document.getElementById('walk-milestone-text');
   if (!banner) return;
+
+  banner.dataset.milestoneType = type;
   banner.className = `walk-milestone-banner ${type}`;
-  banner.textContent = message;
-  banner.style.display = 'block';
+  if (textEl) {
+    textEl.textContent = message;
+  } else {
+    banner.textContent = message;
+  }
+  banner.style.display = 'flex';
 }
 
 function checkWalkMilestones(session) {
@@ -724,20 +748,22 @@ function checkWalkMilestones(session) {
   // 1. Alerta de Metade do Passeio (Meia-volta / 50%)
   if (elapsedMs >= halfwayMs && elapsedMs < warningMs && !session.halfwaySent) {
     session.halfwaySent = true;
+    session.dismissedMilestone = null; // Reabre banner para o novo marco
     localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
     sendWalkNotification(
       '🧭 Metade do Passeio!',
       `Você atingiu ${Math.round(durationMin / 2)} minutos com ${groupLabel}. Hora de iniciar a rota de retorno! 🐾`,
       'halfway'
     );
-    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`);
+    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`, session);
   } else if (session.halfwaySent && !session.warningSent && !session.finishSent) {
-    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`);
+    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`, session);
   }
 
   // 2. Alerta de 5 minutos (Reta final)
   if (elapsedMs >= warningMs && elapsedMs < totalMs && !session.warningSent) {
     session.warningSent = true;
+    session.dismissedMilestone = null; // Reabre banner para o novo marco
     if (!session.halfwaySent) session.halfwaySent = true;
     localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
     sendWalkNotification(
@@ -745,14 +771,15 @@ function checkWalkMilestones(session) {
       `O passeio com ${groupLabel} encerra em 5 minutos. Prepare o retorno!`,
       'warning'
     );
-    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`);
+    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`, session);
   } else if (session.warningSent && !session.finishSent) {
-    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`);
+    updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`, session);
   }
 
   // 3. Alerta de Término
   if (elapsedMs >= totalMs && !session.finishSent) {
     session.finishSent = true;
+    session.dismissedMilestone = null; // Reabre banner para o novo marco
     if (!session.halfwaySent) session.halfwaySent = true;
     if (!session.warningSent) session.warningSent = true;
     localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
@@ -761,9 +788,9 @@ function checkWalkMilestones(session) {
       `A duração contratada de ${durationMin} minutos com ${groupLabel} foi atingida. Hora de concluir!`,
       'finish'
     );
-    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`);
+    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`, session);
   } else if (session.finishSent) {
-    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`);
+    updateMilestoneBadge('finish', `🏁 Tempo Concluído (${durationMin} min com ${groupLabel})!`, session);
   }
 }
 
@@ -924,6 +951,23 @@ function setupWalkController() {
   if (selectGroup) {
     selectGroup.addEventListener('change', () => {
       updateDurationSelectorForGroup(selectGroup.value, 'select-contracted-duration');
+    });
+  }
+
+  const btnCloseMilestone = document.getElementById('btn-close-milestone-banner');
+  if (btnCloseMilestone) {
+    btnCloseMilestone.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dismissMilestoneBadge();
+    });
+  }
+
+  const milestoneBanner = document.getElementById('walk-milestone-banner');
+  if (milestoneBanner) {
+    milestoneBanner.addEventListener('click', (e) => {
+      if (e.target === milestoneBanner || e.target.id === 'walk-milestone-text') {
+        dismissMilestoneBadge();
+      }
     });
   }
 
