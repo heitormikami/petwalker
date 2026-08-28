@@ -383,6 +383,12 @@ input[type="date"]::-webkit-date-and-time-value {
   box-shadow: 0 4px 14px rgba(0,0,0,0.2);
 }
 
+.walk-milestone-banner.halfway {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 2px solid #3B82F6;
+}
+
 .walk-milestone-banner.warning {
   background: #FFFBEB;
   color: #B45309;

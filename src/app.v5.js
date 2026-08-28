@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.2.0',
+  version: '2.3.0',
   build: '2026.08.28',
-  cacheVersion: 'v21'
+  cacheVersion: 'v22'
 };
 
 function renderAppVersionInfo() {
@@ -633,8 +633,31 @@ function playChimeSound(type = 'warning') {
     if (!ctx) return;
 
     const now = ctx.currentTime;
-    if (type === 'warning') {
-      // 2 beeps suaves ascendentes (D5 -> A5)
+    if (type === 'halfway') {
+      // 2 beeps amigáveis indicando meia-volta (E5 -> G5)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now); // E5
+      gain1.gain.setValueAtTime(0.24, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(783.99, now + 0.2); // G5
+      gain2.gain.setValueAtTime(0.26, now + 0.2);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.2);
+      osc2.stop(now + 0.55);
+    } else if (type === 'warning') {
+      // 2 beeps suaves ascendentes de alerta (D5 -> A5)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -692,14 +715,30 @@ function checkWalkMilestones(session) {
   const startMs = new Date(session.startTime).getTime();
   const durationMin = Number(session.contractedDuration || 60);
   const totalMs = durationMin * 60 * 1000;
-  const warningMs = Math.max(0, (durationMin - 5) * 60 * 1000);
+  const halfwayMs = Math.round(durationMin / 2) * 60 * 1000;
+  const warningMs = Math.max(halfwayMs + 60000, (durationMin - 5) * 60 * 1000);
   const now = Date.now();
   const elapsedMs = now - startMs;
   const groupLabel = session.groupName || 'Pets';
 
-  // 1. Alerta de 5 minutos
-  if (elapsedMs >= warningMs && !session.warningSent) {
+  // 1. Alerta de Metade do Passeio (Meia-volta / 50%)
+  if (elapsedMs >= halfwayMs && elapsedMs < warningMs && !session.halfwaySent) {
+    session.halfwaySent = true;
+    localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
+    sendWalkNotification(
+      '🧭 Metade do Passeio!',
+      `Você atingiu ${Math.round(durationMin / 2)} minutos com ${groupLabel}. Hora de iniciar a rota de retorno! 🐾`,
+      'halfway'
+    );
+    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`);
+  } else if (session.halfwaySent && !session.warningSent && !session.finishSent) {
+    updateMilestoneBadge('halfway', `🧭 Metade do Passeio (${Math.round(durationMin / 2)} min)! Hora da meia-volta com ${groupLabel}.`);
+  }
+
+  // 2. Alerta de 5 minutos (Reta final)
+  if (elapsedMs >= warningMs && elapsedMs < totalMs && !session.warningSent) {
     session.warningSent = true;
+    if (!session.halfwaySent) session.halfwaySent = true;
     localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
     sendWalkNotification(
       '⏰ Faltam 5 minutos!',
@@ -711,9 +750,11 @@ function checkWalkMilestones(session) {
     updateMilestoneBadge('warning', `⏰ Faltam 5 minutos! Prepare o retorno com ${groupLabel}.`);
   }
 
-  // 2. Alerta de Término
+  // 3. Alerta de Término
   if (elapsedMs >= totalMs && !session.finishSent) {
     session.finishSent = true;
+    if (!session.halfwaySent) session.halfwaySent = true;
+    if (!session.warningSent) session.warningSent = true;
     localStorage.setItem('petwalker_active_walk', JSON.stringify(session));
     sendWalkNotification(
       '🏁 Tempo Concluído!',
@@ -741,7 +782,10 @@ async function sendWalkNotification(title, body, type = 'warning') {
 
   if (navigator.vibrate) {
     try {
-      navigator.vibrate(type === 'warning' ? [300, 150, 300] : [500, 200, 500]);
+      const vibPattern = type === 'halfway'
+        ? [250, 150, 250]
+        : (type === 'warning' ? [300, 150, 300] : [500, 200, 500]);
+      navigator.vibrate(vibPattern);
     } catch (e) {}
   }
 
@@ -749,12 +793,17 @@ async function sendWalkNotification(title, body, type = 'warning') {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready;
       if (reg && reg.showNotification) {
+        const tag = type === 'halfway' ? 'walk-halfway' : (type === 'warning' ? 'walk-warning' : 'walk-finish');
+        const vibPattern = type === 'halfway'
+          ? [250, 150, 250]
+          : (type === 'warning' ? [300, 150, 300] : [500, 200, 500]);
+
         await reg.showNotification(title, {
           body,
           icon: 'assets/icon-192.png',
           badge: 'assets/favicon-32x32.png',
-          vibrate: type === 'warning' ? [300, 150, 300] : [500, 200, 500],
-          tag: type === 'warning' ? 'walk-warning' : 'walk-finish',
+          vibrate: vibPattern,
+          tag,
           renotify: true,
           requireInteraction: true,
           data: { url: './' }
@@ -776,6 +825,7 @@ async function sendWalkNotification(title, body, type = 'warning') {
 
 function clearWalkAlerts() {
   if (state.walkAlertTimers) {
+    if (state.walkAlertTimers.halfway) clearTimeout(state.walkAlertTimers.halfway);
     if (state.walkAlertTimers.warning) clearTimeout(state.walkAlertTimers.warning);
     if (state.walkAlertTimers.finish) clearTimeout(state.walkAlertTimers.finish);
   }
@@ -789,9 +839,11 @@ function scheduleWalkAlerts(session) {
   const startMs = new Date(session.startTime).getTime();
   const durationMin = Number(session.contractedDuration || 60);
   const totalMs = durationMin * 60 * 1000;
-  const warningMs = Math.max(0, (durationMin - 5) * 60 * 1000);
+  const halfwayMs = Math.round(durationMin / 2) * 60 * 1000;
+  const warningMs = Math.max(halfwayMs + 60000, (durationMin - 5) * 60 * 1000);
   const now = Date.now();
 
+  const halfwayDelay = (startMs + halfwayMs) - now;
   const warningDelay = (startMs + warningMs) - now;
   const finishDelay = (startMs + totalMs) - now;
 
@@ -799,6 +851,12 @@ function scheduleWalkAlerts(session) {
   checkWalkMilestones(session);
 
   state.walkAlertTimers = {};
+
+  if (halfwayDelay > 0 && !session.halfwaySent) {
+    state.walkAlertTimers.halfway = setTimeout(() => {
+      checkWalkMilestones(session);
+    }, halfwayDelay);
+  }
 
   if (warningDelay > 0 && !session.warningSent) {
     state.walkAlertTimers.warning = setTimeout(() => {
@@ -902,6 +960,7 @@ function setupWalkController() {
           startTime: new Date().toISOString(),
           contractedDuration: Number(document.getElementById('select-contracted-duration')?.value || 60),
           pets: groupPets.map(p => p.name),
+          halfwaySent: false,
           warningSent: false,
           finishSent: false
         };
@@ -2137,11 +2196,11 @@ function setupSettingsController() {
   if (btnReqNotif) {
     btnReqNotif.addEventListener('click', async () => {
       unlockAudio();
-      playChimeSound('finish');
+      playChimeSound('halfway');
       const perm = await requestNotificationPermission();
       if (perm === 'granted') {
-        await sendWalkNotification('🔔 Alertas Ativados!', 'As notificações de 5 minutos e término de passeio estão ativas.', 'finish');
-        alert('✅ Notificações e alertas sonoros ativados com sucesso! Você receberá avisos sonoros e notificações na tela.');
+        await sendWalkNotification('🔔 Alertas Ativados!', 'Avisos da metade do passeio (50%), 5 minutos e término estão ativos.', 'halfway');
+        alert('✅ Notificações e alertas sonoros ativados com sucesso! Você receberá avisos sonoros na metade do passeio, aos 5 min e no término.');
       } else if (perm === 'denied') {
         alert('⚠️ As notificações estão bloqueadas nas configurações do navegador/celular. Para receber no iPhone, adicione o PWA à Tela de Início.');
       } else {
