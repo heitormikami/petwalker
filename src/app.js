@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.3.1',
-  build: '2026.08.28',
-  cacheVersion: 'v23'
+  version: '2.4.0',
+  build: '2026.08.31',
+  cacheVersion: 'v24'
 };
 
 function renderAppVersionInfo() {
