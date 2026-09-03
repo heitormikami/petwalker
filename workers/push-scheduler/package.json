@@ -1,0 +1,10 @@
+{
+  "name": "petwalker-push-scheduler",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker para agendamento de Web Push para iPhone (Apple APNs)",
+  "main": "worker.js",
+  "type": "module",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

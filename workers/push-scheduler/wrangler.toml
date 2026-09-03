@@ -1,0 +1,8 @@
+name = "petwalker-push-scheduler"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+VAPID_SUBJECT = "mailto:contato@petwalker.app"
+VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U"
+VAPID_PRIVATE_KEY = "YourGeneratedVapidPrivateKeyHere"

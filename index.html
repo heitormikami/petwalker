@@ -338,7 +338,7 @@
 
       <!-- SEÇÃO: NOTIFICAÇÕES -->
       <div class="settings-section">
-        <div class="settings-section-header">🔔 Notificações</div>
+        <div class="settings-section-header">🔔 Notificações &amp; Web Push</div>
 
         <div class="form-group">
           <label class="form-label">🔔 Alertas de Passeio</label>
@@ -347,7 +347,13 @@
           <div id="notif-test-status" style="font-size: 0.78rem; margin-top: 6px; display: none;"></div>
         </div>
 
-        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm);">
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="form-label">🌐 Servidor de Web Push Nativo (Opcional - APNs)</label>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:-4px; margin-bottom:6px;">URL do seu Cloudflare Worker para acordar o iPhone com tela 100% bloqueada.</p>
+          <input type="url" class="form-input" id="input-setting-push-server" placeholder="https://petwalker-push.seu-subdominio.workers.dev">
+        </div>
+
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-top: 10px;">
           <label class="toggle-row" for="toggle-screen-wake-lock" style="cursor:pointer;">
             <div class="toggle-row-info">
               <div class="toggle-row-title">📱 Manter Tela Acesa</div>
@@ -713,6 +719,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.v5.js?v=26"></script>
+  <script type="module" src="src/app.v5.js?v=27"></script>
 </body>
 </html>

@@ -1,14 +1,15 @@
-const CACHE_NAME = 'petwalker-v26';
+const CACHE_NAME = 'petwalker-v27';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './src/app.v5.js',
-  './src/app.v5.js?v=26',
+  './src/app.v5.js?v=27',
   './src/domain/models.js',
   './src/services/storage.js',
   './src/services/security.js',
   './src/services/googleSync.js',
+  './src/services/pushService.js',
   './manifest.json',
   './assets/icon-192.png',
   './assets/icon-512.png',
@@ -83,6 +84,32 @@ self.addEventListener('fetch', (event) => {
         return new Response('Offline', { status: 503, statusText: 'Offline' });
       })
   );
+});
+
+// Listener de Web Push Oficial (Apple APNs / Google FCM)
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: '🔔 Alerta Petwalker', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || '🔔 Alerta de Passeio!';
+  const options = {
+    body: data.body || 'Aviso do Petwalker.',
+    icon: 'assets/icon-192.png',
+    badge: 'assets/favicon-32x32.png',
+    vibrate: [300, 150, 300, 150, 300],
+    tag: data.tag || 'walk-alert',
+    renotify: true,
+    requireInteraction: true,
+    data: { url: './', sessionId: data.sessionId }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {

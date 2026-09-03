@@ -1,12 +1,13 @@
 import { StorageService } from './services/storage.js';
+import { PushService } from './services/pushService.js';
 import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js';
 import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js';
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.6.0',
+  version: '2.7.0',
   build: '2026.09.03',
-  cacheVersion: 'v26'
+  cacheVersion: 'v27'
 };
 
 function renderAppVersionInfo() {
@@ -129,7 +130,10 @@ async function loadAppData() {
     document.getElementById('input-setting-pix').value = state.settings.pixKey;
   }
   if (document.getElementById('input-setting-google')) {
-    document.getElementById('input-setting-google').value = state.settings.googleScriptUrl;
+    document.getElementById('input-setting-google').value = state.settings.googleScriptUrl || '';
+  }
+  if (document.getElementById('input-setting-push-server')) {
+    document.getElementById('input-setting-push-server').value = state.settings.pushServerUrl || '';
   }
   if (document.getElementById('select-app-theme')) {
     document.getElementById('select-app-theme').value = appTheme;
@@ -1196,8 +1200,18 @@ function setupWalkController() {
         // Salvar cópia local anti-crash
         localStorage.setItem('petwalker_active_walk', JSON.stringify(state.activeSession));
 
-        // Agendar e checar alertas
+        // Agendar e checar alertas locais
         scheduleWalkAlerts(state.activeSession);
+
+        // Se houver servidor Web Push configurado, agenda pushes remotos via APNs
+        if (state.settings.pushServerUrl && PushService.isSupported()) {
+          PushService.getOrSubscribe().then(sub => {
+            if (sub) {
+              PushService.scheduleWalkAlertsOnServer(state.settings.pushServerUrl, state.activeSession, sub)
+                .catch(err => console.warn('[WebPush] Falha ao agendar no servidor:', err));
+            }
+          }).catch(err => console.warn('[WebPush] Inscrição não concluída:', err));
+        }
 
         // Atualizar UI para Estado Ativo
         heroIdle.style.display = 'none';
@@ -1221,6 +1235,11 @@ function setupWalkController() {
         clearWalkAlerts();
         releaseScreenWakeLock();
         stopBackgroundKeepAlive();
+
+        // Cancela push agendado no servidor
+        if (state.settings.pushServerUrl && PushService.isSupported() && state.activeSession?.id) {
+          PushService.cancelWalkAlertsOnServer(state.settings.pushServerUrl, state.activeSession.id);
+        }
 
         const milestoneBanner = document.getElementById('walk-milestone-banner');
         if (milestoneBanner) {
@@ -2462,6 +2481,17 @@ function setupSettingsController() {
       // Inicia keepalive de áudio para evitar congelamento do timer pelo iOS com tela bloqueada
       startBackgroundKeepAlive();
 
+      // Se houver servidor de Web Push configurado, dispara também teste remoto via APNs
+      if (state.settings.pushServerUrl && PushService.isSupported()) {
+        PushService.getOrSubscribe().then(sub => {
+          if (sub) {
+            PushService.sendTestPush(state.settings.pushServerUrl, sub, 15).catch(e => {
+              console.warn('[WebPush Test] Erro ao enviar teste:', e);
+            });
+          }
+        }).catch(() => {});
+      }
+
       let secondsLeft = 15;
       btnReqNotif.classList.add('btn-danger');
       btnReqNotif.textContent = `⏳ Alerta em ${secondsLeft}s... (Clique p/ cancelar)`;
@@ -2538,18 +2568,21 @@ function setupSettingsController() {
     btnSaveSettings.addEventListener('click', async () => {
       const pix = document.getElementById('input-setting-pix').value.trim();
       const googleUrl = document.getElementById('input-setting-google').value.trim();
+      const pushServer = document.getElementById('input-setting-push-server')?.value.trim() || '';
       const theme = selectTheme ? selectTheme.value : 'auto';
       const autoBackup = toggleAutoBackup ? toggleAutoBackup.checked : true;
       const keepAwake = toggleWakeLock ? toggleWakeLock.checked : false;
 
       await StorageService.saveSetting('pixKey', pix);
       await StorageService.saveSetting('googleScriptUrl', googleUrl);
+      await StorageService.saveSetting('pushServerUrl', pushServer);
       await StorageService.saveSetting('appTheme', theme);
       await StorageService.saveSetting('autoBackupEnabled', autoBackup);
       await StorageService.saveSetting('keepScreenAwake', keepAwake);
 
       state.settings.pixKey = pix;
       state.settings.googleScriptUrl = googleUrl;
+      state.settings.pushServerUrl = pushServer;
       state.settings.appTheme = theme;
       state.settings.autoBackupEnabled = autoBackup;
       state.settings.keepScreenAwake = keepAwake;
