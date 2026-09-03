@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  petwalker-push:
+    image: node:20-alpine
+    container_name: petwalker-push-server
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install --production && node server.js"
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - VAPID_SUBJECT=mailto:seu-email@gmail.com
+      - VAPID_PUBLIC_KEY=BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+      - VAPID_PRIVATE_KEY=YourGeneratedVapidPrivateKeyHere
