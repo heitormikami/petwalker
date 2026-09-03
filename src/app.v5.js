@@ -5,9 +5,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.8.0',
+  version: '2.8.1',
   build: '2026.09.03',
-  cacheVersion: 'v28'
+  cacheVersion: 'v29'
 };
 
 function renderAppVersionInfo() {
@@ -2224,7 +2224,96 @@ function getCalculatedInvoice() {
   );
 }
 
+function renderMonthSummaryCards() {
+  const monthPicker = document.getElementById('invoice-month-picker');
+  const monthStr = monthPicker?.value || getLocalDateMonth();
+
+  // 1. Filtrar passeios do mês selecionado
+  const monthSessions = state.sessions.filter(s => {
+    if (!s.startTime) return false;
+    return getLocalDateMonth(s.startTime) === monthStr;
+  });
+
+  // 2. Filtrar ajustes do mês selecionado
+  const monthAdjustments = state.adjustments.filter(a => {
+    if (!a.date) return false;
+    return getLocalDateMonth(a.date) === monthStr;
+  });
+
+  // Cálculo de faturamento total do mês
+  const sessionsTotal = monthSessions.reduce((acc, s) => acc + (Number(s.cost) || 0), 0);
+  const adjustmentsTotal = monthAdjustments.reduce((acc, a) => {
+    const amt = Number(a.amount) || 0;
+    return a.type === 'credit' ? acc - amt : acc + amt;
+  }, 0);
+  const totalRevenue = Math.max(0, sessionsTotal + adjustmentsTotal);
+
+  // Cálculo de tempo total
+  const totalMinutes = monthSessions.reduce((acc, s) => {
+    if (s.contractedDuration) return acc + Number(s.contractedDuration);
+    if (s.startTime && s.endTime) {
+      const diffMs = new Date(s.endTime) - new Date(s.startTime);
+      return acc + Math.max(1, Math.round(diffMs / 60000));
+    }
+    return acc + 60;
+  }, 0);
+
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  const timeFormatted = hours > 0 ? `${hours}h${mins > 0 ? ' ' + mins + 'm' : ''}` : `${mins}min`;
+  const avgDuration = monthSessions.length > 0 ? Math.round(totalMinutes / monthSessions.length) : 0;
+
+  // Cálculo de KM e tutores/pets atendidos
+  let totalKm = 0;
+  let kmSessionCount = 0;
+  const uniqueTutors = new Set();
+  const uniquePets = new Set();
+
+  monthSessions.forEach(s => {
+    if (s.kmTotal && !isNaN(s.kmTotal) && Number(s.kmTotal) > 0) {
+      totalKm += Number(s.kmTotal);
+      kmSessionCount++;
+    }
+    const group = state.groups.find(g => g.id === s.groupId);
+    if (group && group.tutorId) uniqueTutors.add(group.tutorId);
+    if (s.pets && Array.isArray(s.pets)) {
+      s.pets.forEach(p => uniquePets.add(p));
+    }
+  });
+
+  // Atualizar elementos DOM dos cards
+  const revEl = document.getElementById('metric-month-revenue');
+  const revSub = document.getElementById('metric-month-revenue-sub');
+  const walksEl = document.getElementById('metric-month-walks');
+  const walksSub = document.getElementById('metric-month-walks-sub');
+  const timeEl = document.getElementById('metric-month-time');
+  const timeSub = document.getElementById('metric-month-time-sub');
+  const kmEl = document.getElementById('metric-month-km');
+  const kmSub = document.getElementById('metric-month-km-sub');
+
+  if (revEl) revEl.textContent = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
+  if (revSub) revSub.textContent = `${uniqueTutors.size} ${uniqueTutors.size === 1 ? 'tutor atendido' : 'tutores atendidos'}`;
+
+  if (walksEl) walksEl.textContent = `${monthSessions.length}`;
+  if (walksSub) walksSub.textContent = `${uniquePets.size} ${uniquePets.size === 1 ? 'pet passeado' : 'pets passeados'}`;
+
+  if (timeEl) timeEl.textContent = timeFormatted;
+  if (timeSub) timeSub.textContent = `Média ${avgDuration} min/passeio`;
+
+  if (kmEl) {
+    if (kmSessionCount > 0) {
+      kmEl.textContent = `${totalKm.toFixed(1).replace('.', ',')} km`;
+      if (kmSub) kmSub.textContent = `Em ${kmSessionCount} passeios com GPS`;
+    } else {
+      kmEl.textContent = `${uniquePets.size} pets`;
+      if (kmSub) kmSub.textContent = 'Atendidos no mês';
+    }
+  }
+}
+
 function renderInvoiceView() {
+  renderMonthSummaryCards();
+
   const area = document.getElementById('invoice-preview-area');
   const invoice = getCalculatedInvoice();
 

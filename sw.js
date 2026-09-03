@@ -1,10 +1,10 @@
-const CACHE_NAME = 'petwalker-v28';
+const CACHE_NAME = 'petwalker-v29';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './src/app.v5.js',
-  './src/app.v5.js?v=28',
+  './src/app.v5.js?v=29',
   './src/domain/models.js',
   './src/services/storage.js',
   './src/services/security.js',

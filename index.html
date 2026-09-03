@@ -247,19 +247,47 @@
   <!-- VIEW 4: FECHAMENTO MENSAL & FATURAS -->
   <main id="view-invoice" class="view">
     <div class="card">
-      <h3 class="card-title">💰 Fechamento Mensal</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <h3 class="card-title" style="margin-bottom: 0;">💰 Fechamento Mensal</h3>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label for="invoice-month-picker" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Mês:</label>
+          <input type="month" class="form-input" id="invoice-month-picker" style="width: auto; padding: 6px 10px; font-weight: 700; font-size: 0.88rem;">
+        </div>
+      </div>
 
-      <div class="form-row-responsive" style="margin-bottom: 14px;">
-        <div class="form-group">
-          <label class="form-label">Mês / Ano</label>
-          <input type="month" class="form-input" id="invoice-month-picker">
+      <!-- CARDS DE RESUMO DO MÊS (VISÃO CONSOLIDADA) -->
+      <div class="month-summary-grid" id="month-summary-cards">
+        <div class="summary-metric-card highlight">
+          <div class="summary-metric-label">💰 Faturamento</div>
+          <div class="summary-metric-value" id="metric-month-revenue">R$ 0,00</div>
+          <div class="summary-metric-subtext" id="metric-month-revenue-sub">0 tutores atendidos</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Tutor</label>
-          <select class="form-select" id="invoice-tutor-select">
-            <option value="">-- Selecione o Tutor --</option>
-          </select>
+
+        <div class="summary-metric-card">
+          <div class="summary-metric-label">🐾 Passeios</div>
+          <div class="summary-metric-value" id="metric-month-walks">0</div>
+          <div class="summary-metric-subtext" id="metric-month-walks-sub">0 pets passeados</div>
         </div>
+
+        <div class="summary-metric-card">
+          <div class="summary-metric-label">⏱️ Tempo Total</div>
+          <div class="summary-metric-value" id="metric-month-time">0h</div>
+          <div class="summary-metric-subtext" id="metric-month-time-sub">Média 0 min/passeio</div>
+        </div>
+
+        <div class="summary-metric-card">
+          <div class="summary-metric-label">📍 Distância (KM)</div>
+          <div class="summary-metric-value" id="metric-month-km">0 km</div>
+          <div class="summary-metric-subtext" id="metric-month-km-sub">Quilometragem total</div>
+        </div>
+      </div>
+
+      <!-- SELETOR DE TUTOR PARA FATURA INDIVIDUAL -->
+      <div class="form-group" style="margin-top: 14px; margin-bottom: 14px;">
+        <label class="form-label" style="font-weight: 700;">👤 Fatura Individual por Tutor</label>
+        <select class="form-select" id="invoice-tutor-select">
+          <option value="">-- Selecione o Tutor para Detalhar Fatura --</option>
+        </select>
       </div>
 
       <div id="invoice-preview-area" style="display: none;">
@@ -719,6 +747,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.v5.js?v=28"></script>
+  <script type="module" src="src/app.v5.js?v=29"></script>
 </body>
 </html>

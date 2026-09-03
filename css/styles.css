@@ -928,3 +928,66 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--danger);
   border-color: var(--danger-bg);
 }
+
+/* CARDS DE RESUMO DO MÊS (DASHBOARD FATURAS) */
+.month-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 12px 0 16px 0;
+}
+
+@media (min-width: 480px) {
+  .month-summary-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.summary-metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.summary-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.summary-metric-card.highlight {
+  background: linear-gradient(135deg, rgba(224, 122, 95, 0.08), rgba(242, 204, 143, 0.15));
+  border-color: rgba(224, 122, 95, 0.35);
+}
+
+.summary-metric-label {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.summary-metric-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.summary-metric-card.highlight .summary-metric-value {
+  color: var(--primary);
+}
+
+.summary-metric-subtext {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
