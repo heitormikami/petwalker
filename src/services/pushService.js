@@ -14,6 +14,8 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+const DEFAULT_VAPID_PUBLIC_KEY = 'BB08dOw-TjOOFxr5oq20_LImZFLWm7CRBvoYYRrB05lHOG5jGEMafgm6ciXR9Wrp65guJWWOgia5aLQBFKvpCYs';
+
 export const PushService = {
   /**
    * Verifica se o navegador suporta Web Push
@@ -23,9 +25,27 @@ export const PushService = {
   },
 
   /**
+   * Obtém a chave pública VAPID do servidor ou usa a padrão
+   */
+  async fetchVapidKey(serverUrl) {
+    if (serverUrl) {
+      try {
+        const res = await fetch(`${serverUrl.replace(/\/$/, '')}/vapid-public-key`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.publicKey) return data.publicKey;
+        }
+      } catch (e) {
+        console.warn('Usando chave VAPID padrão:', e);
+      }
+    }
+    return DEFAULT_VAPID_PUBLIC_KEY;
+  },
+
+  /**
    * Obtém a inscrição push atual ou cria uma nova com a chave VAPID
    */
-  async getOrSubscribe(vapidPublicKey) {
+  async getOrSubscribe(serverUrl = null, vapidPublicKey = null) {
     if (!this.isSupported()) {
       throw new Error('Web Push não é suportado neste navegador/dispositivo.');
     }
@@ -33,8 +53,9 @@ export const PushService = {
     const reg = await navigator.serviceWorker.ready;
     let subscription = await reg.pushManager.getSubscription();
 
-    if (!subscription && vapidPublicKey) {
-      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+    if (!subscription) {
+      const activeKey = vapidPublicKey || (await this.fetchVapidKey(serverUrl));
+      const convertedVapidKey = urlBase64ToUint8Array(activeKey);
       subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey

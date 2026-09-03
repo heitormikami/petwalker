@@ -10,8 +10,8 @@ app.use(express.json());
 
 // Chaves VAPID (Defina via variáveis de ambiente no Docker / Portainer)
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:contato@petwalker.app';
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'UUxI4n9-v1b-b3f2i7r5-SamplePrivateKeyForDemo-ReplaceWithYourOwn';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BB08dOw-TjOOFxr5oq20_LImZFLWm7CRBvoYYRrB05lHOG5jGEMafgm6ciXR9Wrp65guJWWOgia5aLQBFKvpCYs';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '5qu4rUeak8-N8G0JN9OcUYglTlKTKgjl3HVyJbCY_0w';
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 

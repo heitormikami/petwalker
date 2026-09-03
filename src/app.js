@@ -5,9 +5,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.7.0',
+  version: '2.8.0',
   build: '2026.09.03',
-  cacheVersion: 'v27'
+  cacheVersion: 'v28'
 };
 
 function renderAppVersionInfo() {
@@ -1205,7 +1205,7 @@ function setupWalkController() {
 
         // Se houver servidor Web Push configurado, agenda pushes remotos via APNs
         if (state.settings.pushServerUrl && PushService.isSupported()) {
-          PushService.getOrSubscribe().then(sub => {
+          PushService.getOrSubscribe(state.settings.pushServerUrl).then(sub => {
             if (sub) {
               PushService.scheduleWalkAlertsOnServer(state.settings.pushServerUrl, state.activeSession, sub)
                 .catch(err => console.warn('[WebPush] Falha ao agendar no servidor:', err));
@@ -2483,7 +2483,7 @@ function setupSettingsController() {
 
       // Se houver servidor de Web Push configurado, dispara também teste remoto via APNs
       if (state.settings.pushServerUrl && PushService.isSupported()) {
-        PushService.getOrSubscribe().then(sub => {
+        PushService.getOrSubscribe(state.settings.pushServerUrl).then(sub => {
           if (sub) {
             PushService.sendTestPush(state.settings.pushServerUrl, sub, 15).catch(e => {
               console.warn('[WebPush Test] Erro ao enviar teste:', e);
