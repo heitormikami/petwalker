@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.5.0',
+  version: '2.6.0',
   build: '2026.09.03',
-  cacheVersion: 'v25'
+  cacheVersion: 'v26'
 };
 
 function renderAppVersionInfo() {
@@ -608,6 +608,10 @@ function releaseScreenWakeLock() {
 // -------------------------------------------------------------
 let audioCtx = null;
 let keepAliveAudio = null;
+let keepAliveOsc = null;
+let keepAliveGain = null;
+let backgroundWorker = null;
+let keepAliveWatchdog = null;
 
 function getKeepAliveAudio() {
   if (!keepAliveAudio) {
@@ -618,8 +622,122 @@ function getKeepAliveAudio() {
     keepAliveAudio.setAttribute('playsinline', '');
     keepAliveAudio.setAttribute('webkit-playsinline', '');
     keepAliveAudio.volume = 0.05;
+
+    // Watchdog no elemento de áudio: se pausar sozinho no iOS, relança
+    keepAliveAudio.addEventListener('ended', () => {
+      if (state.activeSession) {
+        keepAliveAudio.play().catch(() => {});
+      }
+    });
+    keepAliveAudio.addEventListener('pause', () => {
+      if (state.activeSession) {
+        keepAliveAudio.play().catch(() => {});
+      }
+    });
   }
   return keepAliveAudio;
+}
+
+function startBackgroundWorker() {
+  if (backgroundWorker) return;
+  try {
+    const workerBlob = new Blob([
+      `let timer = null;
+      self.onmessage = function(e) {
+        if (e.data === 'start') {
+          if (timer) clearInterval(timer);
+          timer = setInterval(function() {
+            self.postMessage('tick');
+          }, 4000);
+        } else if (e.data === 'stop') {
+          if (timer) clearInterval(timer);
+          timer = null;
+        }
+      };`
+    ], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    backgroundWorker = new Worker(workerUrl);
+    backgroundWorker.onmessage = function() {
+      if (state.activeSession) {
+        checkWalkMilestones(state.activeSession);
+      }
+    };
+    backgroundWorker.postMessage('start');
+  } catch (e) {
+    console.warn('Web Worker não suportado para keepalive:', e);
+  }
+}
+
+function stopBackgroundWorker() {
+  try {
+    if (backgroundWorker) {
+      backgroundWorker.postMessage('stop');
+      backgroundWorker.terminate();
+      backgroundWorker = null;
+    }
+  } catch (e) {}
+}
+
+function startWebAudioKeepAlive() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    if (!keepAliveOsc) {
+      keepAliveOsc = ctx.createOscillator();
+      keepAliveGain = ctx.createGain();
+      keepAliveOsc.type = 'sine';
+      keepAliveOsc.frequency.setValueAtTime(20, ctx.currentTime); // 20Hz (inaudível)
+      keepAliveGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      keepAliveOsc.connect(keepAliveGain);
+      keepAliveGain.connect(ctx.destination);
+      keepAliveOsc.start();
+    }
+  } catch (e) {
+    console.warn('Erro WebAudio keepalive:', e);
+  }
+}
+
+function stopWebAudioKeepAlive() {
+  try {
+    if (keepAliveOsc) {
+      keepAliveOsc.stop();
+      keepAliveOsc.disconnect();
+      keepAliveOsc = null;
+    }
+    if (keepAliveGain) {
+      keepAliveGain.disconnect();
+      keepAliveGain = null;
+    }
+  } catch (e) {}
+}
+
+function setupMediaSession() {
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Passeio em Andamento 🐾',
+        artist: 'Petwalker',
+        album: 'Monitoramento em Tempo Real'
+      });
+      navigator.mediaSession.playbackState = 'playing';
+      navigator.mediaSession.setActionHandler('play', () => {
+        startBackgroundKeepAlive();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        // Ignora pausa da tela de bloqueio para não perder o timer
+      });
+    } catch (e) {}
+  }
+}
+
+function clearMediaSession() {
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.playbackState = 'none';
+    } catch (e) {}
+  }
 }
 
 function startBackgroundKeepAlive() {
@@ -631,6 +749,24 @@ function startBackgroundKeepAlive() {
         console.warn('Silent keepalive play ignorado:', e);
       });
     }
+
+    startWebAudioKeepAlive();
+    startBackgroundWorker();
+    setupMediaSession();
+
+    if (!keepAliveWatchdog) {
+      keepAliveWatchdog = setInterval(() => {
+        if (state.activeSession) {
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          if (keepAliveAudio && keepAliveAudio.paused) {
+            keepAliveAudio.play().catch(() => {});
+          }
+          checkWalkMilestones(state.activeSession);
+        }
+      }, 5000);
+    }
   } catch (e) {
     console.warn('Erro ao iniciar keepalive de áudio:', e);
   }
@@ -641,6 +777,14 @@ function stopBackgroundKeepAlive() {
     if (keepAliveAudio) {
       keepAliveAudio.pause();
       keepAliveAudio.currentTime = 0;
+    }
+    stopWebAudioKeepAlive();
+    stopBackgroundWorker();
+    clearMediaSession();
+
+    if (keepAliveWatchdog) {
+      clearInterval(keepAliveWatchdog);
+      keepAliveWatchdog = null;
     }
   } catch (e) {}
 }
