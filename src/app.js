@@ -5,9 +5,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.8.1',
+  version: '2.8.2',
   build: '2026.09.03',
-  cacheVersion: 'v29'
+  cacheVersion: 'v30'
 };
 
 function renderAppVersionInfo() {
@@ -1008,6 +1008,15 @@ async function sendWalkNotification(title, body, type = 'warning') {
       const reg = await navigator.serviceWorker.ready;
       if (reg && reg.showNotification) {
         const tag = type === 'halfway' ? 'walk-halfway' : (type === 'warning' ? 'walk-warning' : 'walk-finish');
+
+        // Se já existe notificação com essa tag (ex: entregue pelo Push do Servidor), não duplica o banner!
+        if (reg.getNotifications) {
+          try {
+            const activeNotifs = await reg.getNotifications({ tag });
+            if (activeNotifs && activeNotifs.length > 0) return;
+          } catch (e) {}
+        }
+
         const vibPattern = type === 'halfway'
           ? [250, 150, 250]
           : (type === 'warning' ? [300, 150, 300] : [500, 200, 500]);
@@ -1018,7 +1027,7 @@ async function sendWalkNotification(title, body, type = 'warning') {
           badge: 'assets/favicon-32x32.png',
           vibrate: vibPattern,
           tag,
-          renotify: true,
+          renotify: false,
           requireInteraction: true,
           data: { url: './' }
         });
@@ -1029,12 +1038,27 @@ async function sendWalkNotification(title, body, type = 'warning') {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       new Notification(title, {
         body,
-        icon: 'assets/icon-192.png'
+        icon: 'assets/icon-192.png',
+        tag: type === 'halfway' ? 'walk-halfway' : (type === 'warning' ? 'walk-warning' : 'walk-finish')
       });
     }
   } catch (err) {
     console.warn('Alerta Petwalker: falha no push do sistema:', err);
   }
+}
+
+// Sincroniza estado de marcos quando o Service Worker recebe Push em background
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'PUSH_DELIVERED' && state.activeSession) {
+      const tag = event.data.tag;
+      if (tag === 'walk-halfway') state.activeSession.halfwaySent = true;
+      if (tag === 'walk-warning') state.activeSession.warningSent = true;
+      if (tag === 'walk-finish') state.activeSession.finishSent = true;
+      localStorage.setItem('petwalker_active_walk', JSON.stringify(state.activeSession));
+      checkWalkMilestones(state.activeSession);
+    }
+  });
 }
 
 function clearWalkAlerts() {

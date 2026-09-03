@@ -1,10 +1,10 @@
-const CACHE_NAME = 'petwalker-v29';
+const CACHE_NAME = 'petwalker-v30';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './src/app.v5.js',
-  './src/app.v5.js?v=29',
+  './src/app.v5.js?v=30',
   './src/domain/models.js',
   './src/services/storage.js',
   './src/services/security.js',
@@ -98,16 +98,24 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || '🔔 Alerta de Passeio!';
+  const tag = data.tag || 'walk-alert';
   const options = {
     body: data.body || 'Aviso do Petwalker.',
     icon: 'assets/icon-192.png',
     badge: 'assets/favicon-32x32.png',
     vibrate: [300, 150, 300, 150, 300],
-    tag: data.tag || 'walk-alert',
-    renotify: true,
+    tag: tag,
+    renotify: false, // Evita disparar banner duplicado se a mesma notificação já existir
     requireInteraction: true,
-    data: { url: './', sessionId: data.sessionId }
+    data: { url: './', sessionId: data.sessionId, tag: tag }
   };
+
+  // Notifica janelas abertas do app para sincronizar estado e evitar disparo duplo local
+  self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    clientList.forEach((client) => {
+      client.postMessage({ type: 'PUSH_DELIVERED', tag: tag, sessionId: data.sessionId });
+    });
+  });
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
