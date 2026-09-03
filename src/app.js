@@ -4,9 +4,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.4.0',
-  build: '2026.08.31',
-  cacheVersion: 'v24'
+  version: '2.5.0',
+  build: '2026.09.03',
+  cacheVersion: 'v25'
 };
 
 function renderAppVersionInfo() {
@@ -563,6 +563,7 @@ function restoreActiveSessionIfAny() {
     if (state.settings.keepScreenAwake) {
       requestScreenWakeLock();
     }
+    startBackgroundKeepAlive();
 
     // Reagendar e checar alertas de 5 minutos e término retroativamente
     scheduleWalkAlerts(savedSession);
@@ -606,6 +607,43 @@ function releaseScreenWakeLock() {
 // ALERTAS SONOROS E NOTIFICAÇÕES DE PASSEIO (5 MIN & TÉRMINO)
 // -------------------------------------------------------------
 let audioCtx = null;
+let keepAliveAudio = null;
+
+function getKeepAliveAudio() {
+  if (!keepAliveAudio) {
+    keepAliveAudio = new Audio();
+    // 1-segundo de áudio silencioso WAV para manter o ciclo de eventos do iOS ativo com tela bloqueada
+    keepAliveAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    keepAliveAudio.loop = true;
+    keepAliveAudio.setAttribute('playsinline', '');
+    keepAliveAudio.setAttribute('webkit-playsinline', '');
+    keepAliveAudio.volume = 0.05;
+  }
+  return keepAliveAudio;
+}
+
+function startBackgroundKeepAlive() {
+  try {
+    const audio = getKeepAliveAudio();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => {
+        console.warn('Silent keepalive play ignorado:', e);
+      });
+    }
+  } catch (e) {
+    console.warn('Erro ao iniciar keepalive de áudio:', e);
+  }
+}
+
+function stopBackgroundKeepAlive() {
+  try {
+    if (keepAliveAudio) {
+      keepAliveAudio.pause();
+      keepAliveAudio.currentTime = 0;
+    }
+  } catch (e) {}
+}
 
 function getAudioContext() {
   if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
@@ -624,6 +662,7 @@ function unlockAudio() {
     if (ctx && ctx.state === 'suspended') {
       ctx.resume();
     }
+    startBackgroundKeepAlive();
   } catch (e) {}
 }
 
@@ -986,6 +1025,7 @@ function setupWalkController() {
 
         unlockAudio();
         requestNotificationPermission();
+        startBackgroundKeepAlive();
 
         if (state.settings.keepScreenAwake) {
           requestScreenWakeLock();
@@ -1036,6 +1076,7 @@ function setupWalkController() {
         if (state.timerInterval) clearInterval(state.timerInterval);
         clearWalkAlerts();
         releaseScreenWakeLock();
+        stopBackgroundKeepAlive();
 
         const milestoneBanner = document.getElementById('walk-milestone-banner');
         if (milestoneBanner) {
@@ -2237,19 +2278,89 @@ function setupSettingsController() {
   }
 
   const btnReqNotif = document.getElementById('btn-request-notifications');
+  const notifTestStatus = document.getElementById('notif-test-status');
+
+  let notifTestTimer = null;
+  let notifCountdownInterval = null;
+
   if (btnReqNotif) {
     btnReqNotif.addEventListener('click', async () => {
-      unlockAudio();
-      playChimeSound('halfway');
-      const perm = await requestNotificationPermission();
-      if (perm === 'granted') {
-        await sendWalkNotification('🔔 Alertas Ativados!', 'Avisos da metade do passeio (50%), 5 minutos e término estão ativos.', 'halfway');
-        alert('✅ Notificações e alertas sonoros ativados com sucesso! Você receberá avisos sonoros na metade do passeio, aos 5 min e no término.');
-      } else if (perm === 'denied') {
-        alert('⚠️ As notificações estão bloqueadas nas configurações do navegador/celular. Para receber no iPhone, adicione o PWA à Tela de Início.');
-      } else {
-        alert('🔔 Alerta sonoro testado! No iPhone, certifique-se de adicionar o Petwalker à Tela de Início (Compartilhar > Adicionar à Tela de Início) para receber notificações na tela de bloqueio.');
+      // Se já houver um teste em contagem regressiva, permite cancelar
+      if (notifTestTimer) {
+        clearTimeout(notifTestTimer);
+        clearInterval(notifCountdownInterval);
+        notifTestTimer = null;
+        notifCountdownInterval = null;
+        if (!state.activeSession) stopBackgroundKeepAlive();
+        btnReqNotif.textContent = '🔔 Testar & Ativar Alertas (Espera 15s)';
+        btnReqNotif.classList.remove('btn-danger');
+        if (notifTestStatus) {
+          notifTestStatus.style.display = 'block';
+          notifTestStatus.style.color = 'var(--text-muted)';
+          notifTestStatus.textContent = '⏹️ Teste de 15 segundos cancelado.';
+        }
+        return;
       }
+
+      unlockAudio();
+      const perm = await requestNotificationPermission();
+
+      if (perm === 'denied') {
+        alert('⚠️ As notificações estão bloqueadas no iPhone.\n\nPara ativar:\n1. Acesse Ajustes > Notificações > Petwalker (ou Ajustes > Safari)\n2. Permita as Notificações\n3. Adicione o Petwalker à Tela de Início.');
+        return;
+      }
+
+      if (perm === 'unsupported') {
+        alert('⚠️ Notificações locais não suportadas neste modo.\n\nNo iPhone, abra o Safari, toque em Compartilhar 📤 e selecione "Adicionar à Tela de Início" para receber alertas com a tela bloqueada.');
+        return;
+      }
+
+      // Inicia keepalive de áudio para evitar congelamento do timer pelo iOS com tela bloqueada
+      startBackgroundKeepAlive();
+
+      let secondsLeft = 15;
+      btnReqNotif.classList.add('btn-danger');
+      btnReqNotif.textContent = `⏳ Alerta em ${secondsLeft}s... (Clique p/ cancelar)`;
+
+      if (notifTestStatus) {
+        notifTestStatus.style.display = 'block';
+        notifTestStatus.style.color = 'var(--primary)';
+        notifTestStatus.innerHTML = `<strong>🔒 Bloqueie a tela do iPhone agora!</strong><br>O alarme tocará e a notificação será disparada em <span id="countdown-sec">${secondsLeft}</span> segundos.`;
+      }
+
+      notifCountdownInterval = setInterval(() => {
+        secondsLeft--;
+        const spanSec = document.getElementById('countdown-sec');
+        if (spanSec) spanSec.textContent = secondsLeft;
+
+        if (secondsLeft > 0) {
+          btnReqNotif.textContent = `⏳ Alerta em ${secondsLeft}s... (Clique p/ cancelar)`;
+        }
+      }, 1000);
+
+      notifTestTimer = setTimeout(async () => {
+        clearInterval(notifCountdownInterval);
+        notifTestTimer = null;
+        notifCountdownInterval = null;
+
+        await sendWalkNotification(
+          '🔔 Teste Petwalker (15s)!',
+          'Alerta recebido com sucesso com a tela bloqueada! Meio de passeio, 5 min e término funcionarão normalmente. 🐾',
+          'halfway'
+        );
+
+        if (!state.activeSession) {
+          stopBackgroundKeepAlive();
+        }
+
+        btnReqNotif.classList.remove('btn-danger');
+        btnReqNotif.textContent = '🔔 Testar & Ativar Alertas (Espera 15s)';
+
+        if (notifTestStatus) {
+          notifTestStatus.style.color = 'var(--success)';
+          notifTestStatus.innerHTML = '✅ <strong>Notificação enviada!</strong> Se você ouviu o som e viu o banner na tela bloqueada, seu iPhone está configurado corretamente.';
+        }
+      }, 15000);
     });
   }
 
