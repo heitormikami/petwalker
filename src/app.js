@@ -5,9 +5,9 @@ import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, li
 import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
 
 export const APP_CONFIG = {
-  version: '2.8.2',
+  version: '2.8.3',
   build: '2026.09.03',
-  cacheVersion: 'v30'
+  cacheVersion: 'v31'
 };
 
 function renderAppVersionInfo() {
@@ -92,6 +92,7 @@ async function loadAppData() {
   const bioCred = await StorageService.getSetting('bioCred');
   const pixKey = await StorageService.getSetting('pixKey');
   const googleScriptUrl = await StorageService.getSetting('googleScriptUrl');
+  const pushServerUrl = await StorageService.getSetting('pushServerUrl');
   const appTheme = await StorageService.getSetting('appTheme') || 'auto';
   const pendingSync = await StorageService.getSetting('pendingSync');
   const lastSyncTime = await StorageService.getSetting('lastSyncTime');
@@ -103,6 +104,7 @@ async function loadAppData() {
     bioCred,
     pixKey: pixKey || 'contato@petwalker.com.br',
     googleScriptUrl: googleScriptUrl || '',
+    pushServerUrl: pushServerUrl || '',
     appTheme,
     pendingSync: pendingSync === true,
     lastSyncTime: lastSyncTime || null,
@@ -124,10 +126,13 @@ async function loadAppData() {
   updateInvoiceTutorDropdown();
   updateSyncStatusBadge();
   updatePinSettingsBadge();
+  renderSettingsView();
+}
 
-  // Carregar dados de configurações nos campos
+function renderSettingsView() {
+  if (!state.settings) return;
   if (document.getElementById('input-setting-pix')) {
-    document.getElementById('input-setting-pix').value = state.settings.pixKey;
+    document.getElementById('input-setting-pix').value = state.settings.pixKey || '';
   }
   if (document.getElementById('input-setting-google')) {
     document.getElementById('input-setting-google').value = state.settings.googleScriptUrl || '';
@@ -136,14 +141,15 @@ async function loadAppData() {
     document.getElementById('input-setting-push-server').value = state.settings.pushServerUrl || '';
   }
   if (document.getElementById('select-app-theme')) {
-    document.getElementById('select-app-theme').value = appTheme;
+    document.getElementById('select-app-theme').value = state.settings.appTheme || 'auto';
   }
   if (document.getElementById('toggle-auto-backup')) {
-    document.getElementById('toggle-auto-backup').checked = state.settings.autoBackupEnabled;
+    document.getElementById('toggle-auto-backup').checked = state.settings.autoBackupEnabled !== false;
   }
   if (document.getElementById('toggle-screen-wake-lock')) {
-    document.getElementById('toggle-screen-wake-lock').checked = state.settings.keepScreenAwake;
+    document.getElementById('toggle-screen-wake-lock').checked = state.settings.keepScreenAwake === true;
   }
+  updatePinSettingsBadge();
 }
 
 function applyTheme(theme) {
@@ -363,6 +369,7 @@ function setupNavigation() {
       if (targetId === 'view-daily') renderDailyView();
       if (targetId === 'view-tutors') renderTutorsList();
       if (targetId === 'view-invoice') renderInvoiceView();
+      if (targetId === 'view-settings') renderSettingsView();
     });
   });
 }
