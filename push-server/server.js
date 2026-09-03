@@ -19,16 +19,16 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const activeSessionTimers = new Map();
 
 // 1. Health check & Chave Pública VAPID
-app.get('/vapid-public-key', (req, res) => {
+app.get(['/vapid-public-key', '/push/vapid-public-key'], (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', activeSessions: activeSessionTimers.size });
+app.get(['/health', '/push/health', '/'], (req, res) => {
+  res.json({ status: 'ok', activeSessions: activeSessionTimers.size, service: 'Petwalker Push Scheduler' });
 });
 
 // 2. Teste de Push (Imediato ou com atraso em segundos)
-app.post('/test', (req, res) => {
+app.post(['/test', '/push/test'], (req, res) => {
   try {
     const { subscription, delaySeconds = 15, title, body, tag } = req.body;
 
@@ -65,7 +65,7 @@ app.post('/test', (req, res) => {
 });
 
 // 3. Agendar Marcos de Passeio (50%, 5min e término)
-app.post('/schedule', (req, res) => {
+app.post(['/schedule', '/push/schedule'], (req, res) => {
   try {
     const { sessionId, subscription, alerts = [] } = req.body;
 
@@ -113,7 +113,7 @@ app.post('/schedule', (req, res) => {
 });
 
 // 4. Cancelar Pushes de um Passeio Concluído
-app.post('/cancel', (req, res) => {
+app.post(['/cancel', '/push/cancel'], (req, res) => {
   const { sessionId } = req.body;
   if (sessionId && activeSessionTimers.has(sessionId)) {
     activeSessionTimers.get(sessionId).forEach(t => clearTimeout(t));
