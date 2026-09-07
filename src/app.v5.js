@@ -1,8 +1,8 @@
-import { StorageService } from './services/storage.js?v=35';
-import { PushService } from './services/pushService.js?v=35';
-import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=35';
-import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=35';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=35';
+import { StorageService } from './services/storage.js?v=36';
+import { PushService } from './services/pushService.js?v=36';
+import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=36';
+import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=36';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=36';
 
 // Fallback defensivo caso o navegador tenha mantido cópia antiga de storage.js em memória
 if (typeof StorageService !== 'undefined') {
@@ -58,9 +58,9 @@ if (typeof StorageService !== 'undefined') {
 }
 
 export const APP_CONFIG = {
-  version: '2.9.3',
+  version: '2.9.4',
   build: '2026.09.07',
-  cacheVersion: 'v35'
+  cacheVersion: 'v36'
 };
 
 function renderAppVersionInfo() {
@@ -646,6 +646,15 @@ function restoreActiveSessionIfAny() {
       btnToggle.textContent = '⏹️ Concluir Passeio';
       btnToggle.classList.remove('btn-primary');
       btnToggle.classList.add('btn-danger');
+    }
+
+    const btnCancel = document.getElementById('btn-cancel-active-walk');
+    if (btnCancel) {
+      btnCancel.style.display = 'block';
+    }
+    const btnManualHome = document.getElementById('btn-open-manual-walk-home');
+    if (btnManualHome) {
+      btnManualHome.style.display = 'none';
     }
 
     if (chipsContainer) {
@@ -1275,6 +1284,62 @@ function setupWalkController() {
     });
   }
 
+  const btnCancelActive = document.getElementById('btn-cancel-active-walk');
+
+  if (btnCancelActive) {
+    btnCancelActive.addEventListener('click', () => {
+      if (!state.activeSession) return;
+      if (!confirm('Deseja realmente cancelar o passeio em andamento? O tempo e dados não salvos serão descartados.')) {
+        return;
+      }
+
+      if (state.timerInterval) clearInterval(state.timerInterval);
+      clearWalkAlerts();
+      releaseScreenWakeLock();
+      stopBackgroundKeepAlive();
+
+      if (state.settings.pushServerUrl && PushService.isSupported() && state.activeSession?.id) {
+        PushService.cancelWalkAlertsOnServer(state.settings.pushServerUrl, state.activeSession.id).catch(() => {});
+      }
+
+      const milestoneBanner = document.getElementById('walk-milestone-banner');
+      if (milestoneBanner) {
+        milestoneBanner.style.display = 'none';
+        milestoneBanner.textContent = '';
+      }
+
+      localStorage.removeItem('petwalker_active_walk');
+      state.activeSession = null;
+
+      heroIdle.style.display = 'block';
+      heroActive.style.display = 'none';
+      walkOptions.style.display = 'none';
+      selectGroup.disabled = false;
+
+      // Limpar campos
+      const pee = document.getElementById('note-pee'); if (pee) pee.checked = false;
+      const poop = document.getElementById('note-poop'); if (poop) poop.checked = false;
+      const water = document.getElementById('note-water'); if (water) water.checked = false;
+      const tired = document.getElementById('note-tired'); if (tired) tired.checked = false;
+      const notesEl = document.getElementById('walk-notes-text'); if (notesEl) notesEl.value = '';
+      const kmStartEl = document.getElementById('walk-km-start'); if (kmStartEl) kmStartEl.value = '';
+      const kmEndEl = document.getElementById('walk-km-end'); if (kmEndEl) kmEndEl.value = '';
+      if (walkPhotoInput) walkPhotoInput.value = '';
+      if (walkPhotoPreviewCont) walkPhotoPreviewCont.style.display = 'none';
+      if (walkPhotoPreviewImg) walkPhotoPreviewImg.src = '';
+      if (walkPhotoTitle) walkPhotoTitle.textContent = 'Tirar / Anexar Foto';
+      if (walkPhotoSubtitle) walkPhotoSubtitle.textContent = 'Toque para abrir a câmera ou galeria';
+      activeWalkCompressedPhoto = null;
+
+      btnToggle.textContent = '🚀 Iniciar Passeio';
+      btnToggle.classList.remove('btn-danger');
+      btnToggle.classList.add('btn-primary');
+      btnCancelActive.style.display = 'none';
+      const btnManualHome = document.getElementById('btn-open-manual-walk-home');
+      if (btnManualHome) btnManualHome.style.display = 'block';
+    });
+  }
+
   btnToggle.addEventListener('click', async () => {
     try {
       if (!state.activeSession) {
@@ -1339,6 +1404,14 @@ function setupWalkController() {
         btnToggle.textContent = '⏹️ Concluir Passeio';
         btnToggle.classList.remove('btn-primary');
         btnToggle.classList.add('btn-danger');
+
+        if (btnCancelActive) {
+          btnCancelActive.style.display = 'block';
+        }
+        const btnManualHome = document.getElementById('btn-open-manual-walk-home');
+        if (btnManualHome) {
+          btnManualHome.style.display = 'none';
+        }
 
         // Chips dos Pets
         chipsContainer.innerHTML = (groupPets.length > 0 ? groupPets : [{ name: group ? group.name : 'Pets' }])
@@ -1436,6 +1509,14 @@ function setupWalkController() {
         btnToggle.textContent = '🚀 Iniciar Passeio';
         btnToggle.classList.remove('btn-danger');
         btnToggle.classList.add('btn-primary');
+
+        if (btnCancelActive) {
+          btnCancelActive.style.display = 'none';
+        }
+        const btnManualHome = document.getElementById('btn-open-manual-walk-home');
+        if (btnManualHome) {
+          btnManualHome.style.display = 'block';
+        }
 
         renderDailyView();
         renderInvoiceView();
@@ -2175,7 +2256,7 @@ function renderTutorPetRows(pets = []) {
   container.innerHTML = pets.map(p => `
     <div class="pet-form-row" data-pet-id="${p.id || ''}">
       <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" value="${p.name || ''}" required>
-      <input type="number" step="0.01" class="form-input pet-bath-rate-input" placeholder="Banho R$" value="${p.bathRate !== undefined && p.bathRate !== null ? p.bathRate : ''}">
+      <input type="number" step="0.01" inputmode="decimal" class="form-input pet-bath-rate-input" placeholder="Banho R$" value="${p.bathRate !== undefined && p.bathRate !== null ? p.bathRate : ''}" style="text-align: right;">
       <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
     </div>
   `).join('');
@@ -2202,7 +2283,7 @@ function setupTutorManager() {
       row.dataset.petId = '';
       row.innerHTML = `
         <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" required>
-        <input type="number" step="0.01" class="form-input pet-bath-rate-input" placeholder="Banho R$">
+        <input type="number" step="0.01" inputmode="decimal" class="form-input pet-bath-rate-input" placeholder="Banho R$" style="text-align: right;">
         <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
       `;
       petsContainer.appendChild(row);
@@ -2470,6 +2551,13 @@ function setupTutorManager() {
   }
 }
 
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '🐾';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function renderTutorsList() {
   const container = document.getElementById('tutors-tree-list');
   if (!container) return;
@@ -2484,54 +2572,106 @@ function renderTutorsList() {
   container.innerHTML = sortedTutors.map(t => {
     const tGroups = state.groups.filter(g => g.tutorId === t.id);
     const tPets = state.pets.filter(p => p.tutorId === t.id || tGroups.some(g => g.id === p.groupId));
+    const initials = getInitials(t.name);
+    const cleanPhone = formatWhatsAppPhone(t.phone || '');
 
     return `
-      <div style="background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
-        <!-- Cabeçalho do Tutor -->
-        <div>
-          <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); word-break: break-word;">👤 ${t.name}</div>
-          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 2px; word-break: break-word;">
-            <span>📱 ${t.phone || 'Sem telefone'}</span>
-            <span>✉️ ${t.email || 'Sem e-mail'}</span>
+      <div class="tutor-card">
+        <!-- Cabeçalho em 2 Colunas Perfeitamente Equilibradas -->
+        <div class="tutor-card-header">
+          <div style="display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0;">
+            <div class="tutor-avatar">
+              ${initials}
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); word-break: break-word; line-height: 1.25;">
+                ${t.name}
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">
+                ${t.phone ? `
+                  <a href="tel:${t.phone}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>📱</span> <span style="text-decoration: underline;">${t.phone}</span>
+                  </a>
+                ` : '<span style="color: var(--text-light);">📱 Sem telefone</span>'}
+                ${t.email ? `
+                  <a href="mailto:${t.email}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; word-break: break-all;">
+                    <span>✉️</span> <span>${t.email}</span>
+                  </a>
+                ` : '<span style="color: var(--text-light);">✉️ Sem e-mail</span>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Lado Direito: Ações Rápidas & Badge -->
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
+            ${cleanPhone ? `
+              <a href="https://wa.me/${cleanPhone}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #25D366; color: #FFFFFF; font-size: 0.76rem; font-weight: 700; padding: 5px 10px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 4px; text-decoration: none; box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);">
+                <span>💬</span> <span>WhatsApp</span>
+              </a>
+            ` : ''}
+            <span class="badge" style="background: var(--bg-cream); border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 2px 8px; border-radius: var(--radius-pill);">
+              🐾 ${tPets.length} ${tPets.length === 1 ? 'pet' : 'pets'}
+            </span>
           </div>
         </div>
 
-        <!-- Pets & Valores de Banho -->
-        <div style="margin-top: 10px;">
-          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Pets &amp; Banhos</div>
-          ${tPets.length > 0 ? `
-            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              ${tPets.map(p => `
-                <span style="display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 4px 10px; font-size: 0.78rem; font-weight: 600;">
-                  🐾 ${p.name} ${p.bathRate ? `<strong style="color: var(--primary);">• 🛁 R$ ${Number(p.bathRate).toFixed(2).replace('.', ',')}</strong>` : ''}
-                </span>
-              `).join('')}
+        <!-- Grade de Serviços (Pets & Banhos | Passeios) -->
+        <div class="tutor-service-grid">
+          
+          <!-- Painel 1: Pets & Banhos -->
+          <div class="tutor-service-box">
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+              <span>🐾 Pets &amp; Banhos</span>
+              ${tPets.length > 0 ? `<span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">${tPets.length}</span>` : ''}
             </div>
-          ` : '<div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Nenhum pet cadastrado.</div>'}
+            ${tPets.length > 0 ? `
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                ${tPets.map(p => `
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 3px 0; border-bottom: 1px dashed var(--border);">
+                    <span style="font-weight: 600; color: var(--text-main);">🐶 ${p.name}</span>
+                    ${p.bathRate ? `<span style="font-weight: 700; color: var(--primary); font-size: 0.76rem;">🛁 R$ ${Number(p.bathRate).toFixed(2).replace('.', ',')}</span>` : '<span style="font-size: 0.72rem; color: var(--text-light);">sem banho</span>'}
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<div style="font-size: 0.76rem; color: var(--text-muted); font-style: italic;">Nenhum pet cadastrado.</div>'}
+          </div>
+
+          <!-- Painel 2: Passeios & Tarifas -->
+          <div class="tutor-service-box">
+            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+              <span>🐕 Passeios</span>
+              ${tGroups.length > 0 ? `<span style="font-size: 0.68rem; font-weight: 600; color: var(--text-muted);">${tGroups.length} grupo</span>` : ''}
+            </div>
+            ${tGroups.length > 0 ? tGroups.map(g => `
+              <div>
+                <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-main); margin-bottom: 4px;">
+                  ${g.name}
+                </div>
+                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                  ${g.rate30min ? `
+                    <span class="badge" style="background: var(--surface); border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; color: var(--primary); padding: 2px 6px; border-radius: var(--radius-sm);">
+                      30m: R$ ${Number(g.rate30min).toFixed(2).replace('.', ',')}
+                    </span>
+                  ` : ''}
+                  ${g.rate60min ? `
+                    <span class="badge" style="background: var(--surface); border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; color: var(--primary); padding: 2px 6px; border-radius: var(--radius-sm);">
+                      60m: R$ ${Number(g.rate60min).toFixed(2).replace('.', ',')}
+                    </span>
+                  ` : ''}
+                  ${!g.rate30min && !g.rate60min ? '<span style="font-size: 0.72rem; color: var(--text-light);">Apenas banhos</span>' : ''}
+                </div>
+              </div>
+            `).join('') : '<div style="font-size: 0.76rem; color: var(--text-muted); font-style: italic;">Sem grupo cadastrado.</div>'}
+          </div>
+
         </div>
 
-        <!-- Grupos de Passeio -->
-        <div style="margin-top: 10px;">
-          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Passeios</div>
-          ${tGroups.length > 0 ? tGroups.map(g => `
-            <div style="background: var(--surface); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-top: 4px; border: 1px solid var(--border);">
-              <div style="font-weight: 700; color: var(--text-main); margin-bottom: 2px; display: flex; align-items: center; gap: 4px;">
-                <span>🐕</span> <span>${g.name}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; color: var(--primary); font-weight: 700; font-size: 0.8rem;">
-                <span>30 min: R$ ${Number(g.rate30min || 0).toFixed(2).replace('.', ',')}</span>
-                <span>60 min: R$ ${Number(g.rate60min || 0).toFixed(2).replace('.', ',')}</span>
-              </div>
-            </div>
-          `).join('') : '<div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Sem grupo de passeio cadastrado.</div>'}
-        </div>
-
-        <!-- Botões de Ação na Base do Card -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);">
-          <button class="btn btn-outline btn-sm" data-action="edit-tutor" data-id="${t.id}" style="width: 100%; padding: 6px 10px;">
-            ✏️ Editar
+        <!-- Ações do Tutor na Base -->
+        <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding-top: 10px; border-top: 1px solid var(--border);">
+          <button class="btn btn-outline btn-sm" data-action="edit-tutor" data-id="${t.id}" style="flex: 1; padding: 6px 12px; font-weight: 600;">
+            ✏️ Editar Tutor
           </button>
-          <button class="btn btn-danger btn-sm" data-action="delete-tutor" data-id="${t.id}" style="width: 100%; padding: 6px 10px;">
+          <button class="btn btn-danger btn-sm" data-action="delete-tutor" data-id="${t.id}" style="padding: 6px 12px; font-weight: 600;" title="Excluir Tutor">
             🗑️ Excluir
           </button>
         </div>

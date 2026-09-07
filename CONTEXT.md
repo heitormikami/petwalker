@@ -22,12 +22,14 @@ Agrupamento de um ou mais Pets do mesmo Tutor que passeiam juntos em uma mesma s
 
 ### 4. Sessão de Passeio (Walk Session)
 Registro operacional de um passeio realizado.
+- **Ciclo de Vida**: `Idle` ➔ `Active` (com timer e anti-crash em `localStorage`) ➔ `Completed` (persistido no `IndexedDB`) ou `Cancelled` (descartado sem cobrança).
 - **Dados Temporais**: `date`, `startTime`, `endTime`.
 - **Duração Contratada**: 30 ou 60 minutos (usada para cálculo financeiro).
 - **Custo Histórico Congelado (`cost`)**: Gravado no momento da conclusão para que reajustes futuros de preços não alterem faturas de meses anteriores.
 - **Quilometragem Opcional**: `kmStart`, `kmEnd`, `kmTotal` para passeios realizados de carro.
 - **Registro Fotográfico (`photo`)**: Imagem comprimida em Base64 (WebP/Canvas) para exibição e histórico.
 - **Anotações**: Necessidades fisiológicas (xixi, cocô, água, cansaço) e notas livres.
+- **Cancelamento Ativo**: Possibilidade de cancelar a qualquer momento durante o estado ativo através de diálogo de confirmação seguro.
 
 ### 5. Registro de Banho (Bath Session)
 Registro operacional de um banho realizado em um pet específico.
@@ -43,6 +45,13 @@ Consolidação financeira mensal gerada para um Tutor.
 ### 7. Ajuste Financeiro (Financial Adjustment)
 Lançamento avulso atrelado a um Tutor para compensação na fatura mensal.
 - **Tipos**: `credit` (abatimento), `debit` (serviço extra), `discount`.
+
+### 8. Painel de Ajustes (Grouped Inset Cards)
+Arquitetura de configurações modularizada no padrão Apple iOS:
+- **Geral & Cobrança**: Tema do app (Claro, Escuro, Auto) e Chave PIX.
+- **Segurança & Acesso**: PIN 4 dígitos com hashing SHA-256 e Biometria nativa WebAuthn.
+- **Alertas & Passeio**: Trava de tela (*Wake Lock*), alertas locais sonoros/visuais e Web Push APNs retrátil.
+- **Nuvem & Backups**: Sincronização inteligente com Google Drive e exportações JSON.
 
 ---
 

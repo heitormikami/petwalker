@@ -8,11 +8,11 @@
   <meta name="description" content="App PWA para registro de passeios de cães, relatórios e fechamento de cobranças.">
   
   <!-- PWA & Mobile Icons -->
-  <link rel="manifest" href="manifest.json?v=24">
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=24">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png?v=24">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=24">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=24">
+  <link rel="manifest" href="manifest.json?v=36">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=36">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png?v=36">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=36">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=36">
   
   <!-- Apple Web App Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -87,7 +87,7 @@
     <!-- Hero / Passeio Ativo -->
     <div class="timer-hero" id="timer-hero">
       <div id="hero-idle-state">
-        <div style="font-size: 1.1rem; color: rgba(255,255,255,0.95); font-weight: 600;">Pronta para passear? 🐾</div>
+        <div style="font-size: 1.1rem; color: rgba(255,255,255,0.95); font-weight: 600;">Hora do passeio! 🐾</div>
         <p style="font-size: 0.85rem; margin-top: 4px; color: rgba(255,255,255,0.88);">Selecione o grupo e inicie o cronômetro.</p>
       </div>
 
@@ -123,7 +123,7 @@
 
       <div id="walk-active-options" style="display: none;">
         <div class="form-group">
-          <label class="form-label">Observações Rápida de Bem-Estar</label>
+          <label class="form-label">Observações Rápidas de Bem-Estar</label>
           <div class="quick-notes-grid">
             <label class="note-toggle"><input type="checkbox" id="note-pee" value="Fez xixi"> 💦 Fez Xixi</label>
             <label class="note-toggle"><input type="checkbox" id="note-poop" value="Fez cocô"> 💩 Fez Cocô</label>
@@ -140,8 +140,8 @@
         <div class="form-group">
           <label class="form-label">🚗 Quilometragem (Opcional / Se for de Carro)</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <input type="number" step="0.1" class="form-input" id="walk-km-start" placeholder="Km Inicial">
-            <input type="number" step="0.1" class="form-input" id="walk-km-end" placeholder="Km Final">
+            <input type="number" step="0.1" inputmode="decimal" class="form-input" id="walk-km-start" placeholder="Km Inicial" style="text-align: right;">
+            <input type="number" step="0.1" inputmode="decimal" class="form-input" id="walk-km-end" placeholder="Km Final" style="text-align: right;">
           </div>
         </div>
 
@@ -170,8 +170,11 @@
         <button class="btn btn-primary btn-full" id="btn-toggle-walk">
           🚀 Iniciar Passeio
         </button>
+        <button type="button" class="btn btn-outline btn-full" id="btn-cancel-active-walk" style="display: none; border-color: var(--danger); color: var(--danger); font-size: 0.9rem;">
+          ✕ Cancelar Passeio
+        </button>
         <button class="btn btn-outline btn-full" id="btn-open-manual-walk-home">
-          📝 Lançar Passeio Retroativo / Manual
+          📝 Lançar Passeio Manual
         </button>
       </div>
     </div>
@@ -378,129 +381,131 @@
   </main>
 
   <main id="view-settings" class="view">
-    <div class="card">
-
-      <!-- SEÇÃO: APARÊNCIA -->
-      <div class="settings-section">
-        <div class="settings-section-header">🎨 Aparência</div>
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Tema Visual</label>
-          <select class="form-select" id="select-app-theme">
-            <option value="auto">⚙️ Automático (Tema do Sistema)</option>
-            <option value="light">☀️ Modo Claro</option>
-            <option value="dark">🌙 Modo Escuro</option>
-          </select>
-        </div>
+    <!-- CARD 1: GERAL & COBRANÇA -->
+    <div class="settings-group-card">
+      <div class="settings-group-title">
+        <span>🎨 Geral &amp; Cobrança</span>
       </div>
 
-      <!-- SEÇÃO: SEGURANÇA -->
-      <div class="settings-section">
-        <div class="settings-section-header">🔒 Segurança</div>
+      <div class="form-group">
+        <label class="form-label">Tema Visual</label>
+        <select class="form-select" id="select-app-theme">
+          <option value="auto">⚙️ Automático (Tema do Sistema)</option>
+          <option value="light">☀️ Modo Claro</option>
+          <option value="dark">🌙 Modo Escuro</option>
+        </select>
+      </div>
 
-        <div class="form-group">
-          <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>PIN de Segurança (4 dígitos)</span>
-            <span id="badge-pin-status" class="badge" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill);">Não cadastrado</span>
-          </label>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <div style="position: relative; flex: 1;">
-              <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 38px;">
-              <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN">👁️</button>
-            </div>
-            <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
-            <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none;" title="Remover PIN">Remover</button>
+      <div class="form-group">
+        <label class="form-label">Chave PIX para Faturas</label>
+        <input type="text" class="form-input" id="input-setting-pix" placeholder="E-mail, telefone ou CPF">
+      </div>
+
+      <button class="btn btn-primary btn-full" id="btn-save-settings" style="margin-top: 4px;">
+        💾 Salvar Ajustes
+      </button>
+    </div>
+
+    <!-- CARD 2: SEGURANÇA & ACESSO -->
+    <div class="settings-group-card">
+      <div class="settings-group-title">
+        <span>🔒 Segurança &amp; Acesso</span>
+        <span id="badge-pin-status" class="badge" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill);">Não cadastrado</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">PIN de Segurança (4 dígitos)</label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 38px;">
+            <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN">👁️</button>
           </div>
-          <div id="pin-status-info" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;"></div>
+          <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none;" title="Remover PIN">Remover</button>
         </div>
-
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Biometria do Celular (WebAuthn)</label>
-          <button class="btn btn-outline btn-full" id="btn-register-bio">👆 Cadastrar Biometria Nativa</button>
-        </div>
+        <div id="pin-status-info" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;"></div>
       </div>
 
-      <!-- SEÇÃO: NOTIFICAÇÕES -->
-      <div class="settings-section">
-        <div class="settings-section-header">🔔 Notificações &amp; Web Push</div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">Biometria do Celular (WebAuthn)</label>
+        <button class="btn btn-outline btn-full" id="btn-register-bio">👆 Cadastrar Biometria Nativa</button>
+      </div>
+    </div>
 
-        <div class="form-group">
-          <label class="form-label">🔔 Alertas de Passeio</label>
-          <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Avisos sonoros e visuais na metade do passeio (50%), aos 5 min antes e no término.</p>
-          <button type="button" class="btn btn-outline btn-full" id="btn-request-notifications">🔔 Testar &amp; Ativar Alertas (Espera 15s)</button>
-          <div id="notif-test-status" style="font-size: 0.78rem; margin-top: 6px; display: none;"></div>
-        </div>
-
-        <div class="form-group" style="margin-top: 14px;">
-          <label class="form-label">🌐 Servidor de Web Push Nativo (Opcional - APNs)</label>
-          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:-4px; margin-bottom:6px;">URL do seu Cloudflare Worker para acordar o iPhone com tela 100% bloqueada.</p>
-          <input type="url" class="form-input" id="input-setting-push-server" placeholder="https://petwalker-push.seu-subdominio.workers.dev">
-        </div>
-
-        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-top: 10px;">
-          <label class="toggle-row" for="toggle-screen-wake-lock" style="cursor:pointer;">
-            <div class="toggle-row-info">
-              <div class="toggle-row-title">📱 Manter Tela Acesa</div>
-              <div class="toggle-row-desc">Evita que a tela bloqueie durante o cronômetro do passeio.</div>
-            </div>
-            <label class="ios-switch">
-              <input type="checkbox" id="toggle-screen-wake-lock">
-              <span class="ios-switch-track"></span>
-              <span class="ios-switch-thumb"></span>
-            </label>
-          </label>
-        </div>
+    <!-- CARD 3: ALERTAS & PASSEIO -->
+    <div class="settings-group-card">
+      <div class="settings-group-title">
+        <span>🔔 Alertas &amp; Passeio</span>
       </div>
 
-      <!-- SEÇÃO: PAGAMENTOS -->
-      <div class="settings-section">
-        <div class="settings-section-header">💰 Pagamentos</div>
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label">Chave PIX para Faturas</label>
-          <input type="text" class="form-input" id="input-setting-pix" placeholder="E-mail, telefone ou CPF">
-        </div>
-      </div>
-
-      <!-- SEÇÃO: SINCRONIZAÇÃO -->
-      <div class="settings-section">
-        <div class="settings-section-header">☁️ Sincronização</div>
-
-        <div class="form-group">
-          <label class="form-label">URL do Google Apps Script</label>
-          <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Conecta ao Google Drive (backup) e Gmail (envio de faturas).</p>
-          <input type="url" class="form-input" id="input-setting-google" placeholder="https://script.google.com/macros/s/.../exec">
-        </div>
-
-        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm);">
-          <label class="toggle-row" for="toggle-auto-backup" style="cursor:pointer;">
-            <div class="toggle-row-info">
-              <div class="toggle-row-title">☁️ Auto-Backup Inteligente</div>
-              <div class="toggle-row-desc">Salva automaticamente no Google Drive quando há Wi-Fi.</div>
-            </div>
-            <label class="ios-switch">
-              <input type="checkbox" id="toggle-auto-backup" checked>
-              <span class="ios-switch-track"></span>
-              <span class="ios-switch-thumb"></span>
-            </label>
-          </label>
-          <div id="sync-status-badge" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
-            Status: <span id="sync-status-text" style="font-weight: 600; color: var(--text-main);">Verificando alterações...</span>
+      <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 14px;">
+        <label class="toggle-row" for="toggle-screen-wake-lock" style="cursor:pointer;">
+          <div class="toggle-row-info">
+            <div class="toggle-row-title">📱 Manter Tela Acesa</div>
+            <div class="toggle-row-desc">Evita que a tela bloqueie durante o cronômetro do passeio.</div>
           </div>
+          <label class="ios-switch">
+            <input type="checkbox" id="toggle-screen-wake-lock">
+            <span class="ios-switch-track"></span>
+            <span class="ios-switch-thumb"></span>
+          </label>
+        </label>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">Alertas Sonoros &amp; Visuais</label>
+        <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Avisos na metade do passeio (50%), aos 5 min antes e no término.</p>
+        <button type="button" class="btn btn-outline btn-full" id="btn-request-notifications">🔔 Testar Alertas no Aparelho (15s)</button>
+        <div id="notif-test-status" style="font-size: 0.78rem; margin-top: 6px; display: none;"></div>
+      </div>
+
+      <details class="settings-details">
+        <summary>🌐 Servidor de Web Push Nativo (Opcional - APNs)</summary>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; line-height: 1.4;">URL do Cloudflare Worker para acordar o iPhone com tela 100% bloqueada.</p>
+        <input type="url" class="form-input" id="input-setting-push-server" placeholder="https://petwalker-push.seu-subdominio.workers.dev">
+      </details>
+    </div>
+
+    <!-- CARD 4: NUVEM & BACKUPS -->
+    <div class="settings-group-card">
+      <div class="settings-group-title">
+        <span>☁️ Nuvem &amp; Backups</span>
+      </div>
+
+      <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 12px 14px; border-radius: var(--radius-sm); margin-bottom: 14px;">
+        <label class="toggle-row" for="toggle-auto-backup" style="cursor:pointer;">
+          <div class="toggle-row-info">
+            <div class="toggle-row-title">☁️ Auto-Backup Inteligente</div>
+            <div class="toggle-row-desc">Salva automaticamente no Google Drive ao conectar ao Wi-Fi.</div>
+          </div>
+          <label class="ios-switch">
+            <input type="checkbox" id="toggle-auto-backup" checked>
+            <span class="ios-switch-track"></span>
+            <span class="ios-switch-thumb"></span>
+          </label>
+        </label>
+        <div id="sync-status-badge" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+          Status: <span id="sync-status-text" style="font-weight: 600; color: var(--text-main);">Verificando alterações...</span>
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">URL do Google Apps Script</label>
+        <p style="font-size:0.78rem; color:var(--text-muted); margin-top:-4px; margin-bottom:8px;">Conecta ao Google Drive (backup) e Gmail (envio de faturas).</p>
+        <input type="url" class="form-input" id="input-setting-google" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
 
-      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
-        <button class="btn btn-primary btn-full" id="btn-save-settings">Salvar Configurações</button>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
         <button class="btn btn-outline btn-full" id="btn-sync-google-now">☁️ Fazer Backup no Google Drive</button>
         <button class="btn btn-secondary btn-full" id="btn-pull-google-now">🔄 Sincronizar do Google Drive</button>
         <button class="btn btn-outline btn-full" id="btn-export-json">📥 Exportar Backup Local (JSON)</button>
       </div>
+    </div>
 
-      <!-- VERSÃO DO APP -->
-      <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 0.78rem;">
-        <div>🐾 <strong>Petwalker PWA</strong> • Versão <span id="app-version-display">2.1.0</span></div>
-        <div id="app-build-display" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Local-First • Offline Ready • Build 2026.08.27 (v17)</div>
-      </div>
+    <!-- VERSÃO DO APP -->
+    <div style="margin: 20px 0 10px 0; text-align: center; color: var(--text-muted); font-size: 0.78rem;">
+      <div>🐾 <strong>Petwalker PWA</strong> • Versão <span id="app-version-display">2.9.4</span></div>
+      <div id="app-build-display" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Local-First • Offline Ready • Build 2026.09.07 (v36)</div>
     </div>
   </main>
 
@@ -605,17 +610,17 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
             <label class="form-label">Valor 30 Min (R$)</label>
-            <input type="number" step="0.01" class="form-input" id="group-rate-30" placeholder="0.00">
+            <input type="number" step="0.01" inputmode="decimal" class="form-input" id="group-rate-30" placeholder="0.00" style="text-align: right;">
           </div>
           <div class="form-group">
             <label class="form-label">Valor 60 Min (R$)</label>
-            <input type="number" step="0.01" class="form-input" id="group-rate-60" placeholder="0.00">
+            <input type="number" step="0.01" inputmode="decimal" class="form-input" id="group-rate-60" placeholder="0.00" style="text-align: right;">
           </div>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button type="button" class="btn btn-outline btn-full" id="btn-close-tutor-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary btn-full">Salvar Tutor</button>
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-tutor-modal">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">💾 Salvar Tutor</button>
         </div>
       </form>
     </div>
@@ -663,7 +668,7 @@
 
         <div class="form-group">
           <label class="form-label">Valor Cobrado (R$)</label>
-          <input type="number" step="0.01" class="form-input" id="bath-cost" required placeholder="0.00">
+          <input type="number" step="0.01" inputmode="decimal" class="form-input" id="bath-cost" required placeholder="0.00" style="text-align: right;">
         </div>
 
         <div class="form-group">
@@ -672,8 +677,8 @@
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button type="button" class="btn btn-outline btn-full" id="btn-close-bath-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary btn-full">Salvar Banho</button>
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-bath-modal">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">💾 Salvar Banho</button>
         </div>
       </form>
     </div>
@@ -693,15 +698,15 @@
         </div>
         <div class="form-group">
           <label class="form-label">Valor (R$)</label>
-          <input type="number" step="0.01" class="form-input" id="adj-amount" required placeholder="20.00">
+          <input type="number" step="0.01" inputmode="decimal" class="form-input" id="adj-amount" required placeholder="20.00" style="text-align: right;">
         </div>
         <div class="form-group">
           <label class="form-label">Descrição</label>
           <input type="text" class="form-input" id="adj-desc" required placeholder="Ex: Crédito passeio cancelado por chuva">
         </div>
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button type="button" class="btn btn-outline btn-full" id="btn-close-adj-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary btn-full">Salvar Ajuste</button>
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-adj-modal">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">💾 Salvar Ajuste</button>
         </div>
       </form>
     </div>
@@ -731,11 +736,11 @@
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
-            <label class="form-label">Horário Inicial</label>
+            <label class="form-label">Horário Início</label>
             <input type="time" class="form-input" id="manual-walk-start" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Horário Final</label>
+            <label class="form-label">Horário Fim</label>
             <input type="time" class="form-input" id="manual-walk-end" required>
           </div>
         </div>
@@ -751,8 +756,8 @@
         <div class="form-group">
           <label class="form-label">🚗 Quilometragem (Opcional / Se for de Carro)</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <input type="number" step="0.1" class="form-input" id="manual-walk-km-start" placeholder="Km Inicial">
-            <input type="number" step="0.1" class="form-input" id="manual-walk-km-end" placeholder="Km Final">
+            <input type="number" step="0.1" inputmode="decimal" class="form-input" id="manual-walk-km-start" placeholder="Km Inicial" style="text-align: right;">
+            <input type="number" step="0.1" inputmode="decimal" class="form-input" id="manual-walk-km-end" placeholder="Km Final" style="text-align: right;">
           </div>
         </div>
 
@@ -782,8 +787,8 @@
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button type="button" class="btn btn-outline btn-full" id="btn-close-walk-modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary btn-full">Salvar Passeio</button>
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-walk-modal">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">💾 Salvar Passeio</button>
         </div>
       </form>
     </div>
@@ -836,7 +841,7 @@
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-outline btn-full" id="btn-close-restore-modal">Cancelar</button>
+        <button class="btn btn-outline btn-full" id="btn-close-restore-modal">✕ Cancelar</button>
       </div>
     </div>
   </div>
@@ -858,8 +863,8 @@
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button type="button" class="btn btn-outline btn-full" id="btn-cancel-reset-pin">Cancelar</button>
-        <button type="button" class="btn btn-danger btn-full" id="btn-confirm-reset-pin">Confirmar</button>
+        <button type="button" class="btn btn-outline btn-full" id="btn-cancel-reset-pin">✕ Cancelar</button>
+        <button type="button" class="btn btn-danger btn-full" id="btn-confirm-reset-pin">✓ Confirmar</button>
       </div>
     </div>
   </div>
@@ -882,6 +887,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.v5.js?v=35"></script>
+  <script type="module" src="src/app.v5.js?v=36"></script>
 </body>
 </html>

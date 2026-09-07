@@ -1035,3 +1035,151 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--text-muted);
 }
 
+/* SETTINGS GROUPED INSET CARDS (ESTILO APPLE iOS) */
+.settings-group-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.settings-group-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+details.settings-details {
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+details.settings-details summary {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+details.settings-details[open] summary {
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* PET FORM ROWS (MODAL TUTOR) */
+.pet-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pet-form-row .pet-name-input {
+  flex: 1.6;
+  min-width: 0;
+}
+
+.pet-form-row .pet-bath-rate-input {
+  flex: 1.1;
+  min-width: 0;
+  text-align: right;
+}
+
+.btn-remove-pet {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--bg-cream);
+  color: var(--danger);
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.btn-remove-pet:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+/* TUTOR CARD DESIGN SYSTEM */
+.tutor-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.tutor-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.tutor-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tutor-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #FF8855);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(255, 102, 51, 0.25);
+  font-family: 'Outfit', sans-serif;
+}
+
+.tutor-service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 440px) {
+  .tutor-service-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tutor-service-box {
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+

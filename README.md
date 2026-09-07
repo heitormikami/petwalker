@@ -6,7 +6,13 @@
 
 ## ✨ Funcionalidades Principais
  
-### 🛁 Gestão Operacional de Banhos (Novo!)
+### ⚙️ Ajustes & Experiência Nativa Apple iOS (Novo!)
+- **Cards Agrupados Estilo Apple (*Grouped Inset Cards*)**: Divisão das configurações em 4 blocos táteis independentes com cantos arredondados e fundo elevado: *Geral & Cobrança*, *Segurança & Acesso*, *Alertas & Passeio* e *Nuvem & Backups*.
+- **Controle de Notificações com `<details>` Retrátil**: Configurações avançadas de APNs e Web Push agrupadas de forma colapsável, mantendo a tela visualmente limpa e intuitiva.
+- **Cancelamento Seguro de Passeio Ativo**: Botão dedicado `✕ Cancelar Passeio` com diálogo de confirmação para abortar cronômetros acidentais sem gerar faturas indesejadas.
+- **Formulários e Moedas Mobile-First**: Campos numéricos e monetários (`R$`, `Km`) com teclado numérico automático (`inputmode="decimal"`) e alinhamento à direita.
+
+### 🛁 Gestão Operacional de Banhos
 - **Aba Dedicada "Banhos"**: Interface ágil na barra inferior para visualização, lançamento e edição diária dos banhos dados aos pets.
 - **Navegação Diária (*Pill Bar*)**: Seleção rápida de data e retorno ao dia atual com totalizadores automáticos (quantidade de banhos e faturamento do dia).
 - **Lançamento Direto com Autopreenchimento**: Selecione o tutor e o pet para que o valor pré-cadastrado do banho daquele pet seja carregado automaticamente, registrando horários de início/fim e notas de produtos.
@@ -55,7 +61,7 @@
 - **Frontend Core**: Vanilla HTML5, Modern CSS (Design System com temas Claro/Escuro, HSL e Variáveis CSS) e Vanilla JavaScript (ES Modules).
 - **Armazenamento**: IndexedDB local-first (`StorageService`).
 - **Segurança**: Web Crypto API + Pure JS SHA-256 Fallback e WebAuthn.
-- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v19` para execução 100% offline e notificações.
+- **PWA**: Service Worker (`sw.js`) com cache `petwalker-v36` para execução 100% offline e notificações.
 - **Cloud Backend**: Google Apps Script (Drive API + Gmail API).
 
 ---

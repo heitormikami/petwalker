@@ -1,20 +1,58 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.3 / Cache v35)**! Esta atualização traz o módulo de **Gestão de Banhos dos Pets**, precificação individual por pet no cadastro de tutores, **cards separados de totais mensais de passeios e banhos na tela de faturamento** e melhorias ergonômicas mobile-first.
+Bem-vinda à nova versão do **Petwalker (v2.9.4 / Cache v36)**! Esta atualização traz o **redesign completo da tela de Ajustes no estilo nativo Apple iOS (Grouped Inset Cards)**, botão dedicado para cancelamento de passeios ativos com confirmação segura, alinhamento numérico à direita e padronização visual em todos os modais.
 
 ---
 
-## 🌟 Principais Destaques
+## 🌟 Principais Destaques (v2.9.4)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 💰 Totais Separados   🛁 Gestão de Banhos     📑 Fatura Integrada Cronológica │
-│ 🐕 Preço por Pet      🔔 Alertas de Tempo     🛡️ Anti-Crash no Cronômetro    │
-│ 📱 Layout 2x2 Mobile  🚗 Odômetro (Km)        ☁️ Auto-Backup no Wi-Fi       │
+│ 🎨 Ajustes Apple Inset │ 🛑 Cancelar Passeio   │ 🐾 Cards Tutores Equilibrados│
+│ 💬 WhatsApp Direto     │ 🔢 Valores Alinhados  │ 📱 Ergonomia iPhone XR       │
+│ 💰 Totais Separados    │ 🛁 Gestão de Banhos   │ ☁️ Auto-Backup no Wi-Fi      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
+
+## 🎨 1. Redesign da Tela de Ajustes (Estilo Nativo Apple iOS)
+
+### 🗂️ 4 Cards Agrupados com Fundo Elevado e Cantos Arredondados
+A tela de configurações foi reestruturada para eliminar o bloco longo de rolagem, dividindo as opções em 4 cartões distintos e confortáveis:
+1. **🎨 Geral & Cobrança**: Seleção de Tema Visual (Sistema, Claro, Escuro), Chave PIX Padrão para faturas e botão direto `💾 Salvar Ajustes`.
+2. **🔒 Segurança & Acesso**: Badge dinâmico de status do PIN (`🛡️ Protegido` ou `⚠️ Não cadastrado`), campo de 4 dígitos com botão de visibilidade `👁️`, botões `Salvar PIN` / `Remover PIN` e botão de biometria nativa (`WebAuthn`).
+3. **🔔 Alertas & Passeio**: Toggle nativo iOS para manter tela acesa (*Wake Lock*), botão para testar alertas locais com espera de 15 segundos e detalhes colapsáveis `<details>` para configuração avançada do servidor Web Push (APNs).
+4. **☁️ Nuvem & Backups**: Status em tempo real da sincronização, toggle de auto-backup inteligente em Wi-Fi, endpoint do Google Apps Script e botões de ação verticalizados (`☁️ Fazer Backup`, `🔄 Sincronizar da Nuvem`, `📥 Exportar JSON`).
+5. **Rodapé de Versão**: Versão do App (`2.9.4`) e Build (`2026.09.07 - v36`) centralizados.
+
+---
+
+## 🛑 2. Cancelamento Seguro de Passeio Ativo
+
+- **Novo Botão `✕ Cancelar Passeio`**: Exibido exclusivamente durante um passeio em andamento, posicionado logo abaixo do botão de conclusão.
+- **Diálogo de Confirmação**: Evita toques acidentais perguntando se a usuária realmente deseja descartar a sessão em andamento.
+- **Limpeza Total**: Cancela cronômetros, limpa fotos temporárias, libera trava de tela (*Wake Lock*), desliga keepalive sonoro e remove a sessão anti-crash do `localStorage`.
+- **Alternância de Botões**: O botão de lançamento retroativo manual fica oculto durante o cronômetro ativo, liberando espaço tátil.
+
+---
+
+## 📱 3. Refinamentos Mobile-First (Auditoria iPhone XR)
+
+- **Valores Numéricos e Monetários**: Todos os campos monetários (`R$`) e odômetros (`Km`) agora possuem `inputmode="decimal"` e alinhamento à direita (`text-align: right`), facilitando a digitação no teclado numérico mobile.
+- **Padronização de Ações em Modais**: Todos os botões de ação foram harmonizados com ícones representativos (`💾 Salvar...`, `✕ Cancelar`, `✓ Confirmar`).
+- **Consistência de Rótulos de Horário**: Padronização para *"Horário Início"* e *"Horário Fim"* em todos os modais.
+- **Melhorias de Copy**: Saudação humanizada no topo da aba Passeio (*"Hora do passeio! 🐾"*), e correção gramatical (*"Observações Rápidas de Bem-Estar"*).
+## 🐾 4. Redesign do Card de Tutor (Anti-Vácuo Lateral & Equilíbrio Visual)
+
+- **Avatar com Iniciais**: Identificação visual rápida de cada tutor com avatar circular em gradiente suave baseado nas iniciais do nome.
+- **Acesso Rápido ao WhatsApp**: Botão direto `💬 WhatsApp` estilizado no canto superior direito do card, sanitizando o número e disparando conversa direta sem intermediários.
+- **Contador de Pets**: Badge `🐾 X pets` alinhado à direita no cabeçalho.
+- **Grade 2-Colunas Perfeitamente Equilibrada**:
+  - **🐾 Pets & Banhos**: Lista de pets cadastrados com seus respectivos valores de banho (`🛁 R$ XX,XX`) alinhados e legíveis.
+  - **🐕 Passeios**: Nome do grupo e badges de preços por duração (`30m: R$ XX,XX` e `60m: R$ XX,XX`).
+- **Ações na Base**: Botão expandido `✏️ Editar Tutor` e botão seguro `🗑️ Excluir`.
+- **Eliminação do Espaço Vazio**: Ocupação harmoniosa da largura no viewport de smartphones como iPhone XR.
 
 ## 💰 1. Tela de Faturamento com Totais Mensais Separados
 
