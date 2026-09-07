@@ -1,15 +1,20 @@
-const CACHE_NAME = 'petwalker-v31';
+const CACHE_NAME = 'petwalker-v35';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
   './src/app.v5.js',
-  './src/app.v5.js?v=31',
+  './src/app.v5.js?v=35',
   './src/domain/models.js',
+  './src/domain/models.js?v=35',
   './src/services/storage.js',
+  './src/services/storage.js?v=35',
   './src/services/security.js',
+  './src/services/security.js?v=35',
   './src/services/googleSync.js',
+  './src/services/googleSync.js?v=35',
   './src/services/pushService.js',
+  './src/services/pushService.js?v=35',
   './manifest.json',
   './assets/icon-192.png',
   './assets/icon-512.png',

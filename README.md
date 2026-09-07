@@ -5,6 +5,13 @@
 ---
 
 ## ✨ Funcionalidades Principais
+ 
+### 🛁 Gestão Operacional de Banhos (Novo!)
+- **Aba Dedicada "Banhos"**: Interface ágil na barra inferior para visualização, lançamento e edição diária dos banhos dados aos pets.
+- **Navegação Diária (*Pill Bar*)**: Seleção rápida de data e retorno ao dia atual com totalizadores automáticos (quantidade de banhos e faturamento do dia).
+- **Lançamento Direto com Autopreenchimento**: Selecione o tutor e o pet para que o valor pré-cadastrado do banho daquele pet seja carregado automaticamente, registrando horários de início/fim e notas de produtos.
+- **Precificação Individual por Pet**: No cadastro do tutor, configure o valor do banho para cada pet individualmente.
+- **Faturamento Integrado**: Faturas mensais, relatórios do WhatsApp e e-mails combinam passeios e banhos em ordem cronológica de atendimento.
 
 ### 🐕 Gestão Operacional de Passeios
 - **Cronômetro ao Vivo com Proteção Anti-Crash**: Se o navegador recarregar ou a bateria acabar no meio da caminhada, o passeio ativo e o tempo decorrido são recuperados automaticamente via `localStorage`.
@@ -22,6 +29,7 @@
 - Delegação de eventos segura para edição e exclusão em cascata (remove tutores, grupos e pets órfãos).
 
 ### 💳 Faturas & Cobranças
+- **Dashboard Consolidado com Cards Separados**: Visão geral mensal com cards dedicados para Faturamento Total, Total de Passeios (R$ e quantidade) e Total de Banhos (R$ e quantidade), além de tempo e distância.
 - Apuração mensal automática por tutor com controle de ajustes (créditos, débitos extras, descontos).
 - Envio instantâneo de resumo por **WhatsApp** com tratamento de números nacionais e DDI `+55`.
 - Disparo de fatura em HTML estilizado via **Google Apps Script (Gmail)** ou link direto no Webmail.

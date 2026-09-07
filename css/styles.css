@@ -525,23 +525,34 @@ input[type="date"]::-webkit-date-and-time-value {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
   flex: 1;
-  padding: 4px 0;
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 1px;
   transition: var(--transition);
   position: relative;
+  white-space: nowrap;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item * {
+  pointer-events: none;
 }
 
 .nav-item svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .nav-item.active {
@@ -552,7 +563,7 @@ input[type="date"]::-webkit-date-and-time-value {
 .nav-item.active::after {
   content: '';
   display: block;
-  width: 20px;
+  width: 18px;
   height: 3px;
   border-radius: var(--radius-pill);
   background: var(--primary);
@@ -562,7 +573,40 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @keyframes navPillIn {
   from { width: 0; opacity: 0; }
-  to { width: 20px; opacity: 1; }
+  to { width: 18px; opacity: 1; }
+}
+
+/* Dynamic Pet Form Row */
+.pet-form-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 36px;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg-cream);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+
+.pet-form-row .btn-remove-pet {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pet-form-row .btn-remove-pet:hover {
+  filter: brightness(0.9);
 }
 
 /* Lock Screen Modal */
@@ -937,7 +981,7 @@ input[type="date"]::-webkit-date-and-time-value {
   margin: 12px 0 16px 0;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 680px) {
   .month-summary-grid {
     grid-template-columns: repeat(4, 1fr);
   }

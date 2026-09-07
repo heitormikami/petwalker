@@ -221,4 +221,62 @@ test('getLocalDateString & getLocalDateMonth - imune a distorções de fuso hor�
   assert.equal(getLocalDateMonth(earlyMorning), '2026-08');
 });
 
+test('calculateMonthlyInvoice - combina passeios e banhos em ordem cronológica', () => {
+  const tutor = { id: 'tut-1', name: 'Maria Silva' };
+  const group = { id: 'grp-1', tutorId: 'tut-1', rate30min: 40.00, rate60min: 70.00 };
+
+  const sessions = [
+    { id: 's1', groupId: 'grp-1', contractedDuration: 30, cost: 40.00, date: '2026-08-05', startTime: '09:00' }
+  ];
+
+  const baths = [
+    { id: 'b1', tutorId: 'tut-1', petName: 'Thor', date: '2026-08-02', startTime: '14:00', endTime: '15:00', cost: 65.00 },
+    { id: 'b2', tutorId: 'tut-1', petName: 'Mel', date: '2026-08-10', startTime: '10:00', endTime: '10:45', cost: 55.00 }
+  ];
+
+  const invoice = calculateMonthlyInvoice(tutor, [group], sessions, [], '2026-08', 'minha-chave-pix', baths);
+
+  assert.equal(invoice.sessionsCount, 1);
+  assert.equal(invoice.sessionsTotalCost, 40.00);
+  assert.equal(invoice.bathsCount, 2);
+  assert.equal(invoice.bathsTotalCost, 120.00);
+  assert.equal(invoice.totalToPay, 160.00);
+
+  // Verifica ordem cronológica de detailedItems: dia 02 (banho), dia 05 (passeio), dia 10 (banho)
+  assert.equal(invoice.detailedItems.length, 3);
+  assert.equal(invoice.detailedItems[0].type, 'bath');
+  assert.equal(invoice.detailedItems[0].date, '2026-08-02');
+  assert.equal(invoice.detailedItems[1].type, 'walk');
+  assert.equal(invoice.detailedItems[1].date, '2026-08-05');
+  assert.equal(invoice.detailedItems[2].type, 'bath');
+  assert.equal(invoice.detailedItems[2].date, '2026-08-10');
+
+  const wa = formatWhatsAppSummary(invoice);
+  assert.ok(wa.includes('Total de Passeios realizados:* 1'));
+  assert.ok(wa.includes('Total de Banhos realizados:* 2'));
+  assert.ok(wa.includes('Banho Thor'));
+  assert.ok(wa.includes('Banho Mel'));
+});
+
+test('calculateMonthlyInvoice - tutor exclusivo de banho (sem passeios)', () => {
+  const tutor = { id: 'tut-2', name: 'Carlos Mendes' };
+  const baths = [
+    { id: 'b3', tutorId: 'tut-2', petName: 'Bob', date: '2026-08-15', startTime: '15:00', endTime: '16:00', cost: 80.00 }
+  ];
+
+  const invoice = calculateMonthlyInvoice(tutor, [], [], [], '2026-08', 'pix@email.com', baths);
+
+  assert.equal(invoice.sessionsCount, 0);
+  assert.equal(invoice.sessionsTotalCost, 0);
+  assert.equal(invoice.bathsCount, 1);
+  assert.equal(invoice.bathsTotalCost, 80.00);
+  assert.equal(invoice.totalToPay, 80.00);
+
+  const wa = formatWhatsAppSummary(invoice);
+  assert.ok(!wa.includes('Total de Passeios realizados'));
+  assert.ok(wa.includes('Total de Banhos realizados:* 1'));
+  assert.ok(wa.includes('R$ 80,00'));
+});
+
+
 

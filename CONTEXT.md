@@ -12,13 +12,13 @@ Pessoa ou família responsável por um ou mais Pets. É a entidade financeira a 
 
 ### 2. Pet
 Animal de estimação associado a um Tutor e Grupo.
-- **Campos**: `id`, `groupId`, `name`, `breed`.
+- **Campos**: `id`, `groupId`, `name`, `breed`, `bathRate` (valor individual do banho).
 
 ### 3. Grupo de Passeio (Contrato de Passeio)
 Agrupamento de um ou mais Pets do mesmo Tutor que passeiam juntos em uma mesma sessão de horário. O valor do passeio é negociado por **Horário/Sessão** (e não por pet individual).
 - **Valores Contratados**:
-  - `rate30min`: Valor da sessão de 30 minutos (ex: R$ 40,00).
-  - `rate60min`: Valor da sessão de 60 minutos (ex: R$ 70,00).
+  - `rate30min`: Valor da sessão de 30 minutos (opcional se o tutor for apenas de banho).
+  - `rate60min`: Valor da sessão de 60 minutos (opcional se o tutor for apenas de banho).
 
 ### 4. Sessão de Passeio (Walk Session)
 Registro operacional de um passeio realizado.
@@ -29,16 +29,20 @@ Registro operacional de um passeio realizado.
 - **Registro Fotográfico (`photo`)**: Imagem comprimida em Base64 (WebP/Canvas) para exibição e histórico.
 - **Anotações**: Necessidades fisiológicas (xixi, cocô, água, cansaço) e notas livres.
 
-### 5. Fatura Mensal (Monthly Invoice)
+### 5. Registro de Banho (Bath Session)
+Registro operacional de um banho realizado em um pet específico.
+- **Dados**: `id`, `tutorId`, `petId`, `petName`, `date`, `startTime`, `endTime`, `cost` (congelado no momento do registro), `notes` (produtos, corte de unhas, etc.).
+
+### 6. Fatura Mensal (Monthly Invoice)
 Consolidação financeira mensal gerada para um Tutor.
 - **Período**: Mês/Ano de referência (`YYYY-MM`).
-- **Itens de Passeio**: Lista de Sessões do mês × Custo Gravado.
-- **Ajustes**: Soma de Créditos (-), Débitos extras (+) e Descontos.
+- **Itens Discriminados Unificados**: Lista de Sessões de Passeio e Banhos em ordem cronológica de atendimento (`detailedItems`).
+- **Resumo**: Total de passeios, total de banhos, soma de ajustes (créditos/débitos).
 - **Total a Pagar**: Valor líquido apurado com dados PIX do prestador.
 
-### 6. Ajuste Financeiro (Financial Adjustment)
+### 7. Ajuste Financeiro (Financial Adjustment)
 Lançamento avulso atrelado a um Tutor para compensação na fatura mensal.
-- **Tipos**: `credit` (abatimento), `debit` (serviço extra como banho), `discount`.
+- **Tipos**: `credit` (abatimento), `debit` (serviço extra), `discount`.
 
 ---
 

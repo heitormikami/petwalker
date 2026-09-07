@@ -231,6 +231,57 @@
     </div>
   </main>
 
+  <!-- VIEW: BANHOS (DIÁRIO DE BANHOS) -->
+  <main id="view-baths" class="view">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+        <h3 class="card-title" style="margin-bottom: 0;">🛁 Diário de Banhos</h3>
+        <button class="btn btn-primary btn-sm" id="btn-open-bath-modal">+ Registrar Banho</button>
+      </div>
+
+      <!-- Barra de Navegação por Datas (Pill Bar) -->
+      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 6px 10px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill);">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-prev" title="Dia Anterior" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+          ◀
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0;">
+          <input type="date" id="filter-bath-date" class="form-input" style="padding: 4px 6px; font-size: 0.88rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 140px; height: 36px; white-space: nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-bath-date-today" title="Ir para Hoje" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-pill); height: 30px;">
+            Hoje
+          </button>
+        </div>
+
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-next" title="Próximo Dia" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+          ▶
+        </button>
+      </div>
+
+      <div id="bath-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+        <div style="background: var(--primary-light); padding: 10px 8px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.7rem; color: var(--primary); font-weight: 700; text-transform: uppercase;">Banhos Hoje</div>
+          <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary);" id="stat-bath-daily-count">0</div>
+        </div>
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 10px 8px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;" id="stat-bath-month-title">Total no Mês</div>
+          <div style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);" id="stat-bath-monthly-count">0</div>
+        </div>
+      </div>
+
+      <ul class="item-list" id="daily-baths-list">
+        <!-- Inserido dinamicamente -->
+      </ul>
+
+      <!-- Empty State -->
+      <div id="bath-empty-state" class="empty-state" style="display:none;">
+        <span class="empty-state-icon">🛁</span>
+        <div class="empty-state-title">Nenhum banho nesta data</div>
+        <p class="empty-state-desc">Registre os banhos dados aos pets para acompanhar o histórico e lançar nas faturas.</p>
+        <button class="btn btn-primary btn-sm" id="btn-bath-empty-cta">+ Registrar Banho</button>
+      </div>
+    </div>
+  </main>
+
   <!-- VIEW 3: TUTORES & GRUPOS DE PETS -->
   <main id="view-tutors" class="view">
     <div class="card">
@@ -258,27 +309,27 @@
       <!-- CARDS DE RESUMO DO MÊS (VISÃO CONSOLIDADA) -->
       <div class="month-summary-grid" id="month-summary-cards">
         <div class="summary-metric-card highlight">
-          <div class="summary-metric-label">💰 Faturamento</div>
+          <div class="summary-metric-label">💰 Faturamento Total</div>
           <div class="summary-metric-value" id="metric-month-revenue">R$ 0,00</div>
           <div class="summary-metric-subtext" id="metric-month-revenue-sub">0 tutores atendidos</div>
         </div>
 
         <div class="summary-metric-card">
-          <div class="summary-metric-label">🐾 Passeios</div>
-          <div class="summary-metric-value" id="metric-month-walks">0</div>
-          <div class="summary-metric-subtext" id="metric-month-walks-sub">0 pets passeados</div>
+          <div class="summary-metric-label">🐾 Total Passeios</div>
+          <div class="summary-metric-value" id="metric-month-walks-revenue" style="color: var(--primary);">R$ 0,00</div>
+          <div class="summary-metric-subtext" id="metric-month-walks-sub">0 passeios realizados</div>
         </div>
 
         <div class="summary-metric-card">
-          <div class="summary-metric-label">⏱️ Tempo Total</div>
-          <div class="summary-metric-value" id="metric-month-time">0h</div>
-          <div class="summary-metric-subtext" id="metric-month-time-sub">Média 0 min/passeio</div>
+          <div class="summary-metric-label">🛁 Total Banhos</div>
+          <div class="summary-metric-value" id="metric-month-baths-revenue" style="color: #2563EB;">R$ 0,00</div>
+          <div class="summary-metric-subtext" id="metric-month-baths-sub">0 banhos realizados</div>
         </div>
 
         <div class="summary-metric-card">
-          <div class="summary-metric-label">📍 Distância (KM)</div>
-          <div class="summary-metric-value" id="metric-month-km">0 km</div>
-          <div class="summary-metric-subtext" id="metric-month-km-sub">Quilometragem total</div>
+          <div class="summary-metric-label">⏱️ Tempo &amp; Distância</div>
+          <div class="summary-metric-value" id="metric-month-time">0h 0m</div>
+          <div class="summary-metric-subtext" id="metric-month-km-sub">0 km rodados</div>
         </div>
       </div>
 
@@ -297,12 +348,16 @@
           <div style="font-size: 0.85rem; color: var(--text-muted);" id="inv-period-text">Referência: 08/2026</div>
 
           <div style="margin: 14px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); padding: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-              <span>Passeios Realizados (<span id="inv-session-count">0</span>):</span>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;" id="inv-walks-row">
+              <span>🐾 Passeios Realizados (<span id="inv-session-count">0</span>):</span>
               <strong id="inv-session-cost">R$ 0,00</strong>
             </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-baths-row">
+              <span>🛁 Banhos Realizados (<span id="inv-bath-count">0</span>):</span>
+              <strong id="inv-bath-cost">R$ 0,00</strong>
+            </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-adjustments-row">
-              <span>Ajustes / Créditos / Débitos:</span>
+              <span>📝 Ajustes / Créditos / Débitos:</span>
               <strong id="inv-adjustments-cost">R$ 0,00</strong>
             </div>
           </div>
@@ -466,6 +521,15 @@
       </svg>
       Diário
     </button>
+    <button class="nav-item" data-target="view-baths">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"></path>
+        <path d="M6 12V5a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v1"></path>
+        <circle cx="15" cy="5" r="1"></circle>
+        <circle cx="18" cy="7" r="1"></circle>
+      </svg>
+      Banhos
+    </button>
     <button class="nav-item" data-target="view-tutors">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -491,9 +555,9 @@
     </button>
   </nav>
 
-  <!-- MODAL TUTOR / GRUPO -->
+  <!-- MODAL TUTOR / GRUPO / PETS -->
   <div id="modal-tutor" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="max-height: 90vh; overflow-y: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
         <h3 class="card-title" id="modal-tutor-title" style="margin-bottom: 0; flex: 1;">Cadastrar Novo Tutor</h3>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-pick-contact" title="Importar da agenda do celular" style="display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 700; padding: 6px 10px; white-space: nowrap;">
@@ -519,26 +583,97 @@
         </div>
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
-        <h4 style="margin-bottom: 10px; font-size: 1rem; color: var(--primary);">Grupo de Passeio & Pets</h4>
+        
+        <!-- SEÇÃO PETS & VALORES DE BANHO -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h4 style="margin: 0; font-size: 0.95rem; color: var(--primary);">🐾 Pets &amp; Valor Padrão do Banho</h4>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-add-pet-row" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 700;">+ Adicionar Pet</button>
+        </div>
+
+        <div id="tutor-pets-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+          <!-- Linhas de pets dinâmicas inseridas via JS -->
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
+        <h4 style="margin-bottom: 4px; font-size: 0.95rem; color: var(--primary);">🐕 Grupo de Passeio (Opcional)</h4>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px;">Se o cliente for exclusivo de banho, pode deixar os valores vazios.</p>
 
         <div class="form-group">
-          <label class="form-label">Nome do Grupo (ex: "Lulu & Rex")</label>
-          <input type="text" class="form-input" id="group-name" required placeholder="Ex: Thor e Mel">
+          <label class="form-label">Nome do Grupo (ex: "Lulu &amp; Rex")</label>
+          <input type="text" class="form-input" id="group-name" placeholder="Ex: Thor e Mel">
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="form-group">
             <label class="form-label">Valor 30 Min (R$)</label>
-            <input type="number" step="0.01" class="form-input" id="group-rate-30" required placeholder="40.00">
+            <input type="number" step="0.01" class="form-input" id="group-rate-30" placeholder="0.00">
           </div>
           <div class="form-group">
             <label class="form-label">Valor 60 Min (R$)</label>
-            <input type="number" step="0.01" class="form-input" id="group-rate-60" required placeholder="70.00">
+            <input type="number" step="0.01" class="form-input" id="group-rate-60" placeholder="0.00">
           </div>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" class="btn btn-outline btn-full" id="btn-close-tutor-modal">Cancelar</button>
           <button type="submit" class="btn btn-primary btn-full">Salvar Tutor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL LANÇAMENTO / EDIÇÃO DE BANHO -->
+  <div id="modal-bath" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" id="modal-bath-title" style="margin-bottom: 0;">🛁 Registrar Banho</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-bath-modal-x" title="Fechar">✕</button>
+      </div>
+      <form id="form-bath">
+        <input type="hidden" id="bath-id">
+
+        <div class="form-group">
+          <label class="form-label">Tutor</label>
+          <select class="form-select" id="bath-tutor-select" required>
+            <option value="">-- Selecione o Tutor --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pet</label>
+          <select class="form-select" id="bath-pet-select" required disabled>
+            <option value="">-- Selecione o Tutor primeiro --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Data do Banho</label>
+          <input type="date" class="form-input" id="bath-date" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Horário Início</label>
+            <input type="time" class="form-input" id="bath-start-time" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horário Fim</label>
+            <input type="time" class="form-input" id="bath-end-time" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Valor Cobrado (R$)</label>
+          <input type="number" step="0.01" class="form-input" id="bath-cost" required placeholder="0.00">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Observações / Produtos Usados (Opcional)</label>
+          <textarea class="form-textarea" id="bath-notes" rows="2" placeholder="Ex: Shampoo hipoalergênico, corte de unhas..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-bath-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">Salvar Banho</button>
         </div>
       </form>
     </div>
@@ -747,6 +882,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.v5.js?v=31"></script>
+  <script type="module" src="src/app.v5.js?v=35"></script>
 </body>
 </html>

@@ -1,13 +1,66 @@
-import { StorageService } from './services/storage.js';
-import { PushService } from './services/pushService.js';
-import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js';
-import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js';
+import { StorageService } from './services/storage.js?v=35';
+import { PushService } from './services/pushService.js?v=35';
+import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=35';
+import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=35';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=35';
+
+// Fallback defensivo caso o navegador tenha mantido cópia antiga de storage.js em memória
+if (typeof StorageService !== 'undefined') {
+  if (!StorageService.saveBath) {
+    StorageService.saveBath = (bath) => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 2);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction('baths', 'readwrite');
+          const store = tx.objectStore('baths');
+          store.put(bath);
+          tx.oncomplete = () => resolve(bath);
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
+  if (!StorageService.getBaths) {
+    StorageService.getBaths = () => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 2);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('baths')) return resolve([]);
+          const tx = db.transaction('baths', 'readonly');
+          const store = tx.objectStore('baths');
+          const getReq = store.getAll();
+          getReq.onsuccess = () => resolve(getReq.result || []);
+          getReq.onerror = () => reject(getReq.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
+  if (!StorageService.deleteBath) {
+    StorageService.deleteBath = (id) => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 2);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction('baths', 'readwrite');
+          const store = tx.objectStore('baths');
+          store.delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
+}
 
 export const APP_CONFIG = {
-  version: '2.8.3',
-  build: '2026.09.03',
-  cacheVersion: 'v31'
+  version: '2.9.3',
+  build: '2026.09.07',
+  cacheVersion: 'v35'
 };
 
 function renderAppVersionInfo() {
@@ -23,6 +76,7 @@ const state = {
   groups: [],
   pets: [],
   sessions: [],
+  baths: [],
   adjustments: [],
   settings: {},
   activeSession: null,
@@ -34,25 +88,39 @@ const state = {
 
 async function initApp() {
   try {
-    await StorageService.initSampleDataIfEmpty();
-    await loadAppData();
+    // 1. Configurar listeners de UI e navegação imediatamente (garante interatividade imediata)
     setupNavigation();
     setupLockScreen();
     setupWalkController();
     setupDailyView();
+    setupBathsView();
     setupTutorManager();
     setupInvoiceManager();
     setupSettingsController();
     setupManualWalkModal();
+    setupBathModal();
     setupEmailPreviewModal();
     setupPhotoViewerModal();
     setupOnlineOfflineStatus();
     renderAppVersionInfo();
 
-    // Recuperar passeio em andamento se o app fechou durante a caminhada (Anti-crash)
+    // 2. Inicializar banco e carregar dados assíncronos
+    try {
+      await StorageService.initSampleDataIfEmpty();
+    } catch (e) {
+      console.warn('Aviso na inicialização de amostra:', e);
+    }
+
+    try {
+      await loadAppData();
+    } catch (e) {
+      console.error('Aviso ao carregar dados do IndexedDB:', e);
+    }
+
+    // 3. Recuperar passeio em andamento se o app fechou durante a caminhada (Anti-crash)
     restoreActiveSessionIfAny();
 
-    // Registrar Service Worker para suporte offline completo
+    // 4. Registrar Service Worker para suporte offline completo
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
         .then(reg => {
@@ -70,7 +138,7 @@ async function initApp() {
         .catch(err => console.warn('Service Worker erro:', err));
     }
   } catch (err) {
-    console.error('Erro na inicialização:', err);
+    console.error('Erro na inicialização do Petwalker:', err);
   }
 }
 
@@ -82,51 +150,61 @@ if (document.readyState === 'loading') {
 
 // CARREGAR DADOS DO INDEXEDDB
 async function loadAppData() {
-  state.tutors = await StorageService.getTutors();
-  state.groups = await StorageService.getGroups();
-  state.pets = await StorageService.getPets();
-  state.sessions = await StorageService.getSessions();
-  state.adjustments = await StorageService.getAdjustments();
-  
-  const pinHash = await StorageService.getSetting('pinHash');
-  const bioCred = await StorageService.getSetting('bioCred');
-  const pixKey = await StorageService.getSetting('pixKey');
-  const googleScriptUrl = await StorageService.getSetting('googleScriptUrl');
-  const pushServerUrl = await StorageService.getSetting('pushServerUrl');
-  const appTheme = await StorageService.getSetting('appTheme') || 'auto';
-  const pendingSync = await StorageService.getSetting('pendingSync');
-  const lastSyncTime = await StorageService.getSetting('lastSyncTime');
-  const autoBackupEnabled = await StorageService.getSetting('autoBackupEnabled');
-  const keepScreenAwake = await StorageService.getSetting('keepScreenAwake');
-
-  state.settings = {
-    pinHash,
-    bioCred,
-    pixKey: pixKey || 'contato@petwalker.com.br',
-    googleScriptUrl: googleScriptUrl || '',
-    pushServerUrl: pushServerUrl || '',
-    appTheme,
-    pendingSync: pendingSync === true,
-    lastSyncTime: lastSyncTime || null,
-    autoBackupEnabled: autoBackupEnabled !== false,
-    keepScreenAwake: keepScreenAwake === true
-  };
-
-  applyTheme(appTheme);
-
-  // Se houver PIN ou Biometria configurada, exibe a tela de bloqueio
-  if (state.settings.pinHash || state.settings.bioCred) {
-    showLockScreen();
+  try {
+    state.tutors = (await StorageService.getTutors()) || [];
+    state.groups = (await StorageService.getGroups()) || [];
+    state.pets = (await StorageService.getPets()) || [];
+    state.sessions = (await StorageService.getSessions()) || [];
+    state.baths = (await StorageService.getBaths()) || [];
+    state.adjustments = (await StorageService.getAdjustments()) || [];
+  } catch (err) {
+    console.error('Erro ao ler coleções do IndexedDB:', err);
   }
 
-  // Preencher seletores e listas na UI
-  updateGroupDropdown();
-  renderDailyView();
-  renderTutorsList();
-  updateInvoiceTutorDropdown();
-  updateSyncStatusBadge();
-  updatePinSettingsBadge();
-  renderSettingsView();
+  try {
+    const pinHash = await StorageService.getSetting('pinHash');
+    const bioCred = await StorageService.getSetting('bioCred');
+    const pixKey = await StorageService.getSetting('pixKey');
+    const googleScriptUrl = await StorageService.getSetting('googleScriptUrl');
+    const pushServerUrl = await StorageService.getSetting('pushServerUrl');
+    const appTheme = (await StorageService.getSetting('appTheme')) || 'auto';
+    const pendingSync = await StorageService.getSetting('pendingSync');
+    const lastSyncTime = await StorageService.getSetting('lastSyncTime');
+    const autoBackupEnabled = await StorageService.getSetting('autoBackupEnabled');
+    const keepScreenAwake = await StorageService.getSetting('keepScreenAwake');
+
+    state.settings = {
+      pinHash,
+      bioCred,
+      pixKey: pixKey || 'contato@petwalker.com.br',
+      googleScriptUrl: googleScriptUrl || '',
+      pushServerUrl: pushServerUrl || '',
+      appTheme,
+      pendingSync: pendingSync === true,
+      lastSyncTime: lastSyncTime || null,
+      autoBackupEnabled: autoBackupEnabled !== false,
+      keepScreenAwake: keepScreenAwake === true
+    };
+
+    applyTheme(appTheme);
+
+    // Se houver PIN ou Biometria configurada, exibe a tela de bloqueio
+    if (state.settings.pinHash || state.settings.bioCred) {
+      showLockScreen();
+    }
+  } catch (err) {
+    console.error('Erro ao carregar configurações:', err);
+  }
+
+  // Preencher seletores e listas na UI de forma segura
+  try { updateGroupDropdown(); } catch (e) { console.warn('Erro ao atualizar dropdown de grupos:', e); }
+  try { renderDailyView(); } catch (e) { console.warn('Erro ao renderizar diário de passeios:', e); }
+  try { renderDailyBaths(); } catch (e) { console.warn('Erro ao renderizar diário de banhos:', e); }
+  try { renderTutorsList(); } catch (e) { console.warn('Erro ao renderizar lista de tutores:', e); }
+  try { updateInvoiceTutorDropdown(); } catch (e) { console.warn('Erro ao atualizar dropdown de faturas:', e); }
+  try { updateSyncStatusBadge(); } catch (e) { console.warn('Erro ao atualizar status de sync:', e); }
+  try { updatePinSettingsBadge(); } catch (e) { console.warn('Erro ao atualizar status de PIN:', e); }
+  try { renderSettingsView(); } catch (e) { console.warn('Erro ao renderizar view de configurações:', e); }
 }
 
 function renderSettingsView() {
@@ -356,8 +434,11 @@ function setupNavigation() {
   const views = document.querySelectorAll('.view');
 
   navItems.forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
       const targetId = item.dataset.target;
+      if (!targetId) return;
+
       navItems.forEach(n => n.classList.remove('active'));
       views.forEach(v => v.classList.remove('active'));
 
@@ -366,10 +447,15 @@ function setupNavigation() {
       if (targetView) targetView.classList.add('active');
       state.activeView = targetId;
 
-      if (targetId === 'view-daily') renderDailyView();
-      if (targetId === 'view-tutors') renderTutorsList();
-      if (targetId === 'view-invoice') renderInvoiceView();
-      if (targetId === 'view-settings') renderSettingsView();
+      try {
+        if (targetId === 'view-daily') renderDailyView();
+        else if (targetId === 'view-baths') renderDailyBaths();
+        else if (targetId === 'view-tutors') renderTutorsList();
+        else if (targetId === 'view-invoice') renderInvoiceView();
+        else if (targetId === 'view-settings') renderSettingsView();
+      } catch (err) {
+        console.error(`Erro ao alternar para view ${targetId}:`, err);
+      }
     });
   });
 }
@@ -1803,6 +1889,299 @@ function setupManualWalkModal() {
 }
 
 // -------------------------------------------------------------
+// CONTROLADOR DA VIEW DE BANHOS (DIÁRIO DE BANHOS)
+// -------------------------------------------------------------
+function setupBathsView() {
+  const dateInput = document.getElementById('filter-bath-date');
+  if (dateInput) {
+    dateInput.value = getLocalDateString();
+    dateInput.addEventListener('change', renderDailyBaths);
+  }
+
+  const btnPrev = document.getElementById('btn-bath-date-prev');
+  const btnToday = document.getElementById('btn-bath-date-today');
+  const btnNext = document.getElementById('btn-bath-date-next');
+  const btnOpenModal = document.getElementById('btn-open-bath-modal');
+  const btnEmptyCta = document.getElementById('btn-bath-empty-cta');
+
+  function changeBathDateOffset(days) {
+    if (!dateInput) return;
+    const baseStr = dateInput.value || getLocalDateString();
+    const [y, m, d] = baseStr.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
+    current.setDate(current.getDate() + days);
+    dateInput.value = getLocalDateString(current);
+    renderDailyBaths();
+  }
+
+  if (btnPrev) btnPrev.addEventListener('click', () => changeBathDateOffset(-1));
+  if (btnNext) btnNext.addEventListener('click', () => changeBathDateOffset(1));
+  if (btnToday) btnToday.addEventListener('click', () => {
+    if (dateInput) {
+      dateInput.value = getLocalDateString();
+      renderDailyBaths();
+    }
+  });
+
+  if (btnOpenModal) btnOpenModal.addEventListener('click', () => openBathModal());
+  if (btnEmptyCta) btnEmptyCta.addEventListener('click', () => openBathModal());
+
+  const listEl = document.getElementById('daily-baths-list');
+  if (listEl) {
+    listEl.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-action="edit-bath"]');
+      const btnDel = e.target.closest('[data-action="delete-bath"]');
+
+      if (btnEdit) {
+        const id = btnEdit.dataset.id;
+        const bath = (state.baths || []).find(b => b.id === id);
+        if (bath) openBathModal(bath);
+      }
+
+      if (btnDel) {
+        const id = btnDel.dataset.id;
+        if (confirm('Deseja realmente excluir este registro de banho?')) {
+          await StorageService.deleteBath(id);
+          state.baths = (state.baths || []).filter(b => b.id !== id);
+          renderDailyBaths();
+          renderInvoiceView();
+          await markPendingChanges();
+        }
+      }
+    });
+  }
+}
+
+function renderDailyBaths() {
+  const dateInput = document.getElementById('filter-bath-date');
+  const targetDateStr = dateInput && dateInput.value ? dateInput.value : getLocalDateString();
+  const targetMonthStr = targetDateStr.substring(0, 7);
+  const listEl = document.getElementById('daily-baths-list');
+  const countEl = document.getElementById('stat-bath-daily-count');
+  const monthCountEl = document.getElementById('stat-bath-monthly-count');
+  const monthTitleEl = document.getElementById('stat-month-title') || document.getElementById('stat-bath-month-title');
+  const emptyState = document.getElementById('bath-empty-state');
+
+  if (!listEl) return;
+
+  const allBaths = state.baths || [];
+  const dayBaths = allBaths.filter(b => getLocalDateString(b.date || b.startTime || b.createdAt) === targetDateStr);
+  const monthBaths = allBaths.filter(b => getLocalDateMonth(b.date || b.startTime || b.createdAt) === targetMonthStr);
+
+  const [year, month] = targetMonthStr.split('-');
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const monthLabel = monthNames[parseInt(month, 10) - 1] || month;
+
+  const bathMonthTitle = document.getElementById('stat-bath-month-title');
+  if (bathMonthTitle) bathMonthTitle.textContent = `No Mês (${monthLabel})`;
+  if (countEl) countEl.textContent = dayBaths.length;
+  if (monthCountEl) monthCountEl.textContent = monthBaths.length;
+
+  if (dayBaths.length === 0) {
+    listEl.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
+    return;
+  }
+  if (emptyState) emptyState.style.display = 'none';
+
+  listEl.innerHTML = dayBaths.map(b => {
+    const tutor = state.tutors.find(t => t.id === b.tutorId);
+    const tutorName = tutor ? tutor.name : 'Tutor';
+    const timeStr = b.startTime ? (b.endTime ? `${b.startTime} às ${b.endTime}` : `${b.startTime}`) : '--:--';
+
+    return `
+      <li class="item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">
+            🛁 ${b.petName || 'Pet'} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">(${tutorName})</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+            🕒 ${timeStr} • <strong style="color: var(--primary);">R$ ${Number(b.cost || 0).toFixed(2).replace('.', ',')}</strong>
+          </div>
+          ${b.notes ? `<div style="font-size: 0.8rem; color: var(--text-main); margin-top: 4px; background: rgba(0,0,0,0.03); padding: 4px 8px; border-radius: 4px;">📝 ${b.notes}</div>` : ''}
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn btn-outline btn-sm" data-action="edit-bath" data-id="${b.id}" title="Editar Banho">✏️</button>
+          <button class="btn btn-danger btn-sm" data-action="delete-bath" data-id="${b.id}" title="Excluir Banho">🗑️</button>
+        </div>
+      </li>
+    `;
+  }).join('');
+}
+
+function openBathModal(bath = null) {
+  const modal = document.getElementById('modal-bath');
+  const titleEl = document.getElementById('modal-bath-title');
+  const idInput = document.getElementById('bath-id');
+  const tutorSelect = document.getElementById('bath-tutor-select');
+  const petSelect = document.getElementById('bath-pet-select');
+  const dateInput = document.getElementById('bath-date');
+  const startInput = document.getElementById('bath-start-time');
+  const endInput = document.getElementById('bath-end-time');
+  const costInput = document.getElementById('bath-cost');
+  const notesInput = document.getElementById('bath-notes');
+
+  if (!modal) return;
+
+  if (titleEl) titleEl.textContent = bath ? '✏️ Editar Banho' : '🛁 Registrar Banho';
+  if (idInput) idInput.value = bath ? bath.id : '';
+
+  // Popula tutores
+  const sortedTutors = [...state.tutors].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+  tutorSelect.innerHTML = '<option value="">-- Selecione o Tutor --</option>' +
+    sortedTutors.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+  function updatePetOptions(selectedTutorId, selectedPetId = null) {
+    if (!selectedTutorId) {
+      petSelect.innerHTML = '<option value="">-- Selecione o Tutor primeiro --</option>';
+      petSelect.disabled = true;
+      return;
+    }
+
+    const tGroups = state.groups.filter(g => g.tutorId === selectedTutorId);
+    const tPets = state.pets.filter(p => p.tutorId === selectedTutorId || tGroups.some(g => g.id === p.groupId));
+
+    if (tPets.length === 0) {
+      petSelect.innerHTML = '<option value="">-- Nenhum pet cadastrado para este tutor --</option>';
+      petSelect.disabled = true;
+      return;
+    }
+
+    petSelect.disabled = false;
+    petSelect.innerHTML = '<option value="">-- Selecione o Pet --</option>' +
+      tPets.map(p => `<option value="${p.id}" data-rate="${p.bathRate || ''}" data-name="${p.name}">${p.name}${p.bathRate ? ` (R$ ${Number(p.bathRate).toFixed(2).replace('.', ',')})` : ''}</option>`).join('');
+
+    if (selectedPetId) {
+      petSelect.value = selectedPetId;
+    } else if (tPets.length === 1) {
+      petSelect.value = tPets[0].id;
+      if (costInput && (!costInput.value || costInput.value === '0' || costInput.value === '0.00')) {
+        costInput.value = tPets[0].bathRate || '';
+      }
+    }
+  }
+
+  tutorSelect.onchange = () => {
+    updatePetOptions(tutorSelect.value);
+  };
+
+  petSelect.onchange = () => {
+    const selectedOpt = petSelect.selectedOptions[0];
+    if (selectedOpt && selectedOpt.dataset.rate) {
+      costInput.value = selectedOpt.dataset.rate;
+    }
+  };
+
+  const now = new Date();
+  const defaultStartTime = now.toTimeString().substring(0, 5);
+  const laterDate = new Date(now.getTime() + 45 * 60000);
+  const defaultEndTime = laterDate.toTimeString().substring(0, 5);
+
+  if (bath) {
+    tutorSelect.value = bath.tutorId || '';
+    updatePetOptions(bath.tutorId, bath.petId);
+    dateInput.value = bath.date || getLocalDateString();
+    startInput.value = bath.startTime || defaultStartTime;
+    endInput.value = bath.endTime || defaultEndTime;
+    costInput.value = bath.cost !== undefined ? bath.cost : '';
+    notesInput.value = bath.notes || '';
+  } else {
+    tutorSelect.value = '';
+    petSelect.innerHTML = '<option value="">-- Selecione o Tutor primeiro --</option>';
+    petSelect.disabled = true;
+    dateInput.value = document.getElementById('filter-bath-date')?.value || getLocalDateString();
+    startInput.value = defaultStartTime;
+    endInput.value = defaultEndTime;
+    costInput.value = '';
+    notesInput.value = '';
+  }
+
+  modal.classList.add('active');
+}
+
+function setupBathModal() {
+  const modal = document.getElementById('modal-bath');
+  const btnClose = document.getElementById('btn-close-bath-modal');
+  const btnCloseX = document.getElementById('btn-close-bath-modal-x');
+  const form = document.getElementById('form-bath');
+
+  if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+  if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const id = document.getElementById('bath-id').value;
+        const tutorId = document.getElementById('bath-tutor-select').value;
+        const petSelect = document.getElementById('bath-pet-select');
+        const petId = petSelect.value;
+        const selectedPetOpt = petSelect.selectedOptions[0];
+        const petName = selectedPetOpt ? (selectedPetOpt.dataset.name || selectedPetOpt.textContent.split(' (')[0].trim()) : 'Pet';
+        const date = document.getElementById('bath-date').value;
+        const startTime = document.getElementById('bath-start-time').value;
+        const endTime = document.getElementById('bath-end-time').value;
+        const cost = Number(document.getElementById('bath-cost').value || 0);
+        const notes = document.getElementById('bath-notes').value.trim();
+
+        const bathData = {
+          id: id || `bath-${Date.now()}`,
+          tutorId,
+          petId,
+          petName,
+          date,
+          startTime,
+          endTime,
+          cost,
+          notes,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (!id) {
+          bathData.createdAt = new Date().toISOString();
+        }
+
+        await StorageService.saveBath(bathData);
+
+        if (!state.baths) state.baths = [];
+        if (id) {
+          const idx = state.baths.findIndex(b => b.id === id);
+          if (idx !== -1) state.baths[idx] = bathData;
+          else state.baths.push(bathData);
+        } else {
+          state.baths.push(bathData);
+        }
+
+        modal.classList.remove('active');
+        renderDailyBaths();
+        renderInvoiceView();
+        await markPendingChanges();
+        alert('✅ Banho registrado com sucesso!');
+      } catch (err) {
+        console.error('Erro ao salvar banho:', err);
+        alert(`Erro ao salvar banho: ${err.message}`);
+      }
+    });
+  }
+}
+
+function renderTutorPetRows(pets = []) {
+  const container = document.getElementById('tutor-pets-container');
+  if (!container) return;
+  if (!pets || pets.length === 0) {
+    pets = [{ id: '', name: '', bathRate: '' }];
+  }
+
+  container.innerHTML = pets.map(p => `
+    <div class="pet-form-row" data-pet-id="${p.id || ''}">
+      <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" value="${p.name || ''}" required>
+      <input type="number" step="0.01" class="form-input pet-bath-rate-input" placeholder="Banho R$" value="${p.bathRate !== undefined && p.bathRate !== null ? p.bathRate : ''}">
+      <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
+    </div>
+  `).join('');
+}
+
+// -------------------------------------------------------------
 // CONTROLADOR DE TUTORES E GRUPOS
 // -------------------------------------------------------------
 function setupTutorManager() {
@@ -1812,12 +2191,52 @@ function setupTutorManager() {
   const form = document.getElementById('form-tutor');
   const modalTitle = document.getElementById('modal-tutor-title');
   const container = document.getElementById('tutors-tree-list');
+  const btnAddPet = document.getElementById('btn-add-pet-row');
+  const petsContainer = document.getElementById('tutor-pets-container');
+
+  if (btnAddPet) {
+    btnAddPet.onclick = () => {
+      if (!petsContainer) return;
+      const row = document.createElement('div');
+      row.className = 'pet-form-row';
+      row.dataset.petId = '';
+      row.innerHTML = `
+        <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" required>
+        <input type="number" step="0.01" class="form-input pet-bath-rate-input" placeholder="Banho R$">
+        <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
+      `;
+      petsContainer.appendChild(row);
+      const input = row.querySelector('.pet-name-input');
+      if (input) input.focus();
+    };
+  }
+
+  if (petsContainer) {
+    petsContainer.onclick = (e) => {
+      const btnRem = e.target.closest('.btn-remove-pet');
+      if (btnRem) {
+        const row = btnRem.closest('.pet-form-row');
+        if (row) {
+          const allRows = petsContainer.querySelectorAll('.pet-form-row');
+          if (allRows.length > 1) {
+            row.remove();
+          } else {
+            const nameInput = row.querySelector('.pet-name-input');
+            const rateInput = row.querySelector('.pet-bath-rate-input');
+            if (nameInput) nameInput.value = '';
+            if (rateInput) rateInput.value = '';
+          }
+        }
+      }
+    };
+  }
 
   if (btnOpen) {
     btnOpen.addEventListener('click', () => {
       form.reset();
       document.getElementById('tutor-id').value = '';
       document.getElementById('tutor-group-id').value = '';
+      renderTutorPetRows([{ id: '', name: '', bathRate: '' }]);
       if (modalTitle) modalTitle.textContent = '🐾 Cadastrar Novo Tutor';
       modal.classList.add('active');
     });
@@ -1825,10 +2244,8 @@ function setupTutorManager() {
 
   if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
 
-  // Novo botão ✕ no header do modal (auditoria UI)
   const btnCloseX = document.getElementById('btn-close-tutor-modal-x');
   if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
-
 
   const btnPickContact = document.getElementById('btn-pick-contact');
   if (btnPickContact) {
@@ -1870,6 +2287,7 @@ function setupTutorManager() {
         if (!tutor) return;
 
         const group = state.groups.find(g => g.tutorId === tutorId);
+        const tPets = state.pets.filter(p => p.tutorId === tutorId || (group && p.groupId === group.id));
 
         document.getElementById('tutor-id').value = tutor.id;
         document.getElementById('tutor-group-id').value = group ? group.id : '';
@@ -1878,10 +2296,12 @@ function setupTutorManager() {
         document.getElementById('tutor-email').value = tutor.email || '';
 
         document.getElementById('group-name').value = group ? group.name : '';
-        document.getElementById('group-rate-30').value = group ? group.rate30min : 40;
-        document.getElementById('group-rate-60').value = group ? group.rate60min : 70;
+        document.getElementById('group-rate-30').value = group && group.rate30min ? group.rate30min : '';
+        document.getElementById('group-rate-60').value = group && group.rate60min ? group.rate60min : '';
 
-        if (modalTitle) modalTitle.textContent = '✏️ Editar Tutor & Grupo';
+        renderTutorPetRows(tPets.length > 0 ? tPets : [{ id: '', name: group ? group.name : '', bathRate: '' }]);
+
+        if (modalTitle) modalTitle.textContent = '✏️ Editar Tutor & Pets';
         modal.classList.add('active');
       }
 
@@ -1890,7 +2310,7 @@ function setupTutorManager() {
         const tutor = state.tutors.find(t => t.id === tutorId);
         if (!tutor) return;
 
-        if (!confirm(`Tem certeza que deseja excluir o tutor "${tutor.name}" e seus grupos de pets?`)) {
+        if (!confirm(`Tem certeza que deseja excluir o tutor "${tutor.name}" e todos os seus pets e registros?`)) {
           return;
         }
 
@@ -1901,19 +2321,20 @@ function setupTutorManager() {
           const relatedGroups = state.groups.filter(g => g.tutorId === tutorId);
           for (const g of relatedGroups) {
             await StorageService.deleteGroup(g.id);
-            const relatedPets = state.pets.filter(p => p.groupId === g.id);
-            for (const p of relatedPets) {
-              await StorageService.deletePet(p.id);
-            }
           }
           state.groups = state.groups.filter(g => g.tutorId !== tutorId);
-          state.pets = state.pets.filter(p => !relatedGroups.some(g => g.id === p.groupId));
+
+          const relatedPets = state.pets.filter(p => p.tutorId === tutorId || relatedGroups.some(g => g.id === p.groupId));
+          for (const p of relatedPets) {
+            await StorageService.deletePet(p.id);
+          }
+          state.pets = state.pets.filter(p => !relatedPets.some(rp => rp.id === p.id));
 
           updateGroupDropdown();
           renderTutorsList();
           updateInvoiceTutorDropdown();
           await markPendingChanges();
-          alert(`✅ Tutor "${tutor.name}" e seus grupos foram excluídos com sucesso!`);
+          alert(`✅ Tutor "${tutor.name}" e seus dados foram excluídos com sucesso!`);
         } catch (err) {
           alert(`Erro ao excluir tutor: ${err.message}`);
         }
@@ -1932,8 +2353,13 @@ function setupTutorManager() {
         const tutorPhone = document.getElementById('tutor-phone').value.trim();
         const tutorEmail = document.getElementById('tutor-email').value.trim();
         const groupName = document.getElementById('group-name').value.trim();
-        const rate30 = Number(document.getElementById('group-rate-30').value || 40);
-        const rate60 = Number(document.getElementById('group-rate-60').value || 70);
+        const rate30Input = document.getElementById('group-rate-30').value;
+        const rate60Input = document.getElementById('group-rate-60').value;
+        const rate30 = rate30Input !== '' && !isNaN(rate30Input) ? Number(rate30Input) : 0;
+        const rate60 = rate60Input !== '' && !isNaN(rate60Input) ? Number(rate60Input) : 0;
+
+        let activeTutorId = tutorId;
+        let activeGroupId = groupId;
 
         if (tutorId) {
           // MODO EDIÇÃO
@@ -1948,30 +2374,23 @@ function setupTutorManager() {
           if (groupId) {
             const existingGroup = state.groups.find(g => g.id === groupId);
             if (existingGroup) {
-              existingGroup.name = groupName;
+              existingGroup.name = groupName || tutorName;
               existingGroup.rate30min = rate30;
               existingGroup.rate60min = rate60;
               await StorageService.saveGroup(existingGroup);
             }
-          } else if (groupName) {
+          } else if (groupName || rate30 > 0 || rate60 > 0) {
             const newGroup = {
               id: `grp-${Date.now()}`,
               tutorId,
-              name: groupName,
+              name: groupName || tutorName,
               rate30min: rate30,
               rate60min: rate60
             };
             await StorageService.saveGroup(newGroup);
             state.groups.push(newGroup);
+            activeGroupId = newGroup.id;
           }
-
-          modal.classList.remove('active');
-          form.reset();
-          updateGroupDropdown();
-          renderTutorsList();
-          updateInvoiceTutorDropdown();
-          await markPendingChanges();
-          alert('✅ Tutor atualizado com sucesso!');
         } else {
           // MODO NOVO
           const newTutor = {
@@ -1980,30 +2399,69 @@ function setupTutorManager() {
             phone: tutorPhone,
             email: tutorEmail
           };
+          activeTutorId = newTutor.id;
 
-          const newGroup = {
-            id: `grp-${Date.now()}`,
-            tutorId: newTutor.id,
-            name: groupName,
-            rate30min: rate30,
-            rate60min: rate60
-          };
+          let newGroup = null;
+          if (groupName || rate30 > 0 || rate60 > 0) {
+            newGroup = {
+              id: `grp-${Date.now()}`,
+              tutorId: newTutor.id,
+              name: groupName || tutorName,
+              rate30min: rate30,
+              rate60min: rate60
+            };
+            activeGroupId = newGroup.id;
+            await StorageService.saveGroup(newGroup);
+            state.groups.push(newGroup);
+          }
 
           await StorageService.saveTutor(newTutor);
-          await StorageService.saveGroup(newGroup);
-
           state.tutors.push(newTutor);
-          state.groups.push(newGroup);
-
-          modal.classList.remove('active');
-          form.reset();
-
-          updateGroupDropdown();
-          renderTutorsList();
-          updateInvoiceTutorDropdown();
-          await markPendingChanges();
-          alert('✅ Tutor e Grupo cadastrados com sucesso!');
         }
+
+        // Salvar pets dinâmicos
+        const petRows = document.querySelectorAll('#tutor-pets-container .pet-form-row');
+        const currentPetIds = new Set();
+        for (const row of petRows) {
+          const petName = row.querySelector('.pet-name-input')?.value.trim();
+          if (!petName) continue;
+          const petRateVal = row.querySelector('.pet-bath-rate-input')?.value;
+          const bathRate = petRateVal !== '' && !isNaN(petRateVal) ? Number(petRateVal) : 0;
+          const petId = row.dataset.petId || `pet-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+          currentPetIds.add(petId);
+
+          const petData = {
+            id: petId,
+            tutorId: activeTutorId,
+            groupId: activeGroupId || null,
+            name: petName,
+            bathRate
+          };
+
+          await StorageService.savePet(petData);
+          const existingIdx = state.pets.findIndex(p => p.id === petId);
+          if (existingIdx !== -1) state.pets[existingIdx] = petData;
+          else state.pets.push(petData);
+        }
+
+        // Deleta pets removidos daquele tutor
+        if (tutorId) {
+          const oldPets = state.pets.filter(p => p.tutorId === tutorId || (groupId && p.groupId === groupId));
+          for (const oldP of oldPets) {
+            if (!currentPetIds.has(oldP.id)) {
+              await StorageService.deletePet(oldP.id);
+              state.pets = state.pets.filter(p => p.id !== oldP.id);
+            }
+          }
+        }
+
+        modal.classList.remove('active');
+        form.reset();
+        updateGroupDropdown();
+        renderTutorsList();
+        updateInvoiceTutorDropdown();
+        await markPendingChanges();
+        alert('✅ Tutor e Pets salvos com sucesso!');
       } catch (err) {
         console.error('Erro ao salvar tutor:', err);
         alert(`Erro ao salvar tutor: ${err.message}`);
@@ -2025,6 +2483,8 @@ function renderTutorsList() {
 
   container.innerHTML = sortedTutors.map(t => {
     const tGroups = state.groups.filter(g => g.tutorId === t.id);
+    const tPets = state.pets.filter(p => p.tutorId === t.id || tGroups.some(g => g.id === p.groupId));
+
     return `
       <div style="background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;">
         <!-- Cabeçalho do Tutor -->
@@ -2036,19 +2496,34 @@ function renderTutorsList() {
           </div>
         </div>
 
-        <!-- Grupos de Passeio & Pets -->
+        <!-- Pets & Valores de Banho -->
         <div style="margin-top: 10px;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Pets &amp; Banhos</div>
+          ${tPets.length > 0 ? `
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              ${tPets.map(p => `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 4px 10px; font-size: 0.78rem; font-weight: 600;">
+                  🐾 ${p.name} ${p.bathRate ? `<strong style="color: var(--primary);">• 🛁 R$ ${Number(p.bathRate).toFixed(2).replace('.', ',')}</strong>` : ''}
+                </span>
+              `).join('')}
+            </div>
+          ` : '<div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Nenhum pet cadastrado.</div>'}
+        </div>
+
+        <!-- Grupos de Passeio -->
+        <div style="margin-top: 10px;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Passeios</div>
           ${tGroups.length > 0 ? tGroups.map(g => `
-            <div style="background: var(--surface); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-top: 6px; border: 1px solid var(--border);">
+            <div style="background: var(--surface); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-top: 4px; border: 1px solid var(--border);">
               <div style="font-weight: 700; color: var(--text-main); margin-bottom: 2px; display: flex; align-items: center; gap: 4px;">
-                <span>🐾</span> <span>${g.name}</span>
+                <span>🐕</span> <span>${g.name}</span>
               </div>
               <div style="display: flex; justify-content: space-between; color: var(--primary); font-weight: 700; font-size: 0.8rem;">
-                <span>30 min: R$ ${Number(g.rate30min).toFixed(2).replace('.', ',')}</span>
-                <span>60 min: R$ ${Number(g.rate60min).toFixed(2).replace('.', ',')}</span>
+                <span>30 min: R$ ${Number(g.rate30min || 0).toFixed(2).replace('.', ',')}</span>
+                <span>60 min: R$ ${Number(g.rate60min || 0).toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
-          `).join('') : '<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; padding: 4px 0;">Nenhum grupo de passeio associado.</div>'}
+          `).join('') : '<div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Sem grupo de passeio cadastrado.</div>'}
         </div>
 
         <!-- Botões de Ação na Base do Card -->
@@ -2251,7 +2726,8 @@ function getCalculatedInvoice() {
     state.sessions,
     state.adjustments,
     monthPicker.value,
-    state.settings.pixKey
+    state.settings.pixKey,
+    state.baths || []
   );
 }
 
@@ -2265,19 +2741,25 @@ function renderMonthSummaryCards() {
     return getLocalDateMonth(s.startTime) === monthStr;
   });
 
-  // 2. Filtrar ajustes do mês selecionado
+  // 2. Filtrar banhos do mês selecionado
+  const monthBaths = (state.baths || []).filter(b => {
+    return getLocalDateMonth(b.date || b.startTime || b.createdAt) === monthStr;
+  });
+
+  // 3. Filtrar ajustes do mês selecionado
   const monthAdjustments = state.adjustments.filter(a => {
     if (!a.date) return false;
     return getLocalDateMonth(a.date) === monthStr;
   });
 
-  // Cálculo de faturamento total do mês
+  // Cálculo de faturamento total do mês (passeios + banhos + ajustes)
   const sessionsTotal = monthSessions.reduce((acc, s) => acc + (Number(s.cost) || 0), 0);
+  const bathsTotal = monthBaths.reduce((acc, b) => acc + (Number(b.cost) || 0), 0);
   const adjustmentsTotal = monthAdjustments.reduce((acc, a) => {
     const amt = Number(a.amount) || 0;
     return a.type === 'credit' ? acc - amt : acc + amt;
   }, 0);
-  const totalRevenue = Math.max(0, sessionsTotal + adjustmentsTotal);
+  const totalRevenue = Math.max(0, sessionsTotal + bathsTotal + adjustmentsTotal);
 
   // Cálculo de tempo total
   const totalMinutes = monthSessions.reduce((acc, s) => {
@@ -2291,14 +2773,15 @@ function renderMonthSummaryCards() {
 
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
-  const timeFormatted = hours > 0 ? `${hours}h${mins > 0 ? ' ' + mins + 'm' : ''}` : `${mins}min`;
+  const timeFormatted = hours > 0 ? `${hours}h${mins > 0 ? ' ' + mins + 'm' : ''}` : `${mins} min`;
   const avgDuration = monthSessions.length > 0 ? Math.round(totalMinutes / monthSessions.length) : 0;
 
   // Cálculo de KM e tutores/pets atendidos
   let totalKm = 0;
   let kmSessionCount = 0;
   const uniqueTutors = new Set();
-  const uniquePets = new Set();
+  const uniqueWalkPets = new Set();
+  const uniqueBathPets = new Set();
 
   monthSessions.forEach(s => {
     if (s.kmTotal && !isNaN(s.kmTotal) && Number(s.kmTotal) > 0) {
@@ -2308,36 +2791,49 @@ function renderMonthSummaryCards() {
     const group = state.groups.find(g => g.id === s.groupId);
     if (group && group.tutorId) uniqueTutors.add(group.tutorId);
     if (s.pets && Array.isArray(s.pets)) {
-      s.pets.forEach(p => uniquePets.add(p));
+      s.pets.forEach(p => uniqueWalkPets.add(p));
     }
+  });
+
+  monthBaths.forEach(b => {
+    if (b.tutorId) uniqueTutors.add(b.tutorId);
+    if (b.petName) uniqueBathPets.add(b.petName);
   });
 
   // Atualizar elementos DOM dos cards
   const revEl = document.getElementById('metric-month-revenue');
   const revSub = document.getElementById('metric-month-revenue-sub');
-  const walksEl = document.getElementById('metric-month-walks');
+  const walksRevEl = document.getElementById('metric-month-walks-revenue');
   const walksSub = document.getElementById('metric-month-walks-sub');
+  const bathsRevEl = document.getElementById('metric-month-baths-revenue');
+  const bathsSub = document.getElementById('metric-month-baths-sub');
   const timeEl = document.getElementById('metric-month-time');
-  const timeSub = document.getElementById('metric-month-time-sub');
-  const kmEl = document.getElementById('metric-month-km');
   const kmSub = document.getElementById('metric-month-km-sub');
 
   if (revEl) revEl.textContent = `R$ ${totalRevenue.toFixed(2).replace('.', ',')}`;
-  if (revSub) revSub.textContent = `${uniqueTutors.size} ${uniqueTutors.size === 1 ? 'tutor atendido' : 'tutores atendidos'}`;
+  if (revSub) {
+    const adjText = adjustmentsTotal !== 0 ? ` (Ajustes: ${adjustmentsTotal > 0 ? '+' : ''}R$ ${adjustmentsTotal.toFixed(2).replace('.', ',')})` : '';
+    revSub.textContent = `${uniqueTutors.size} ${uniqueTutors.size === 1 ? 'tutor atendido' : 'tutores atendidos'}${adjText}`;
+  }
 
-  if (walksEl) walksEl.textContent = `${monthSessions.length}`;
-  if (walksSub) walksSub.textContent = `${uniquePets.size} ${uniquePets.size === 1 ? 'pet passeado' : 'pets passeados'}`;
+  if (walksRevEl) walksRevEl.textContent = `R$ ${sessionsTotal.toFixed(2).replace('.', ',')}`;
+  if (walksSub) {
+    const walkPetCount = uniqueWalkPets.size;
+    walksSub.textContent = `${monthSessions.length} ${monthSessions.length === 1 ? 'passeio' : 'passeios'}${walkPetCount > 0 ? ` • ${walkPetCount} ${walkPetCount === 1 ? 'pet' : 'pets'}` : ''}`;
+  }
+
+  if (bathsRevEl) bathsRevEl.textContent = `R$ ${bathsTotal.toFixed(2).replace('.', ',')}`;
+  if (bathsSub) {
+    const bathPetCount = uniqueBathPets.size;
+    bathsSub.textContent = `${monthBaths.length} ${monthBaths.length === 1 ? 'banho' : 'banhos'}${bathPetCount > 0 ? ` • ${bathPetCount} ${bathPetCount === 1 ? 'pet' : 'pets'}` : ''}`;
+  }
 
   if (timeEl) timeEl.textContent = timeFormatted;
-  if (timeSub) timeSub.textContent = `Média ${avgDuration} min/passeio`;
-
-  if (kmEl) {
+  if (kmSub) {
     if (kmSessionCount > 0) {
-      kmEl.textContent = `${totalKm.toFixed(1).replace('.', ',')} km`;
-      if (kmSub) kmSub.textContent = `Em ${kmSessionCount} passeios com GPS`;
+      kmSub.textContent = `${totalKm.toFixed(1).replace('.', ',')} km rodados (GPS)`;
     } else {
-      kmEl.textContent = `${uniquePets.size} pets`;
-      if (kmSub) kmSub.textContent = 'Atendidos no mês';
+      kmSub.textContent = monthSessions.length > 0 ? `Média ${avgDuration} min/passeio` : '0 km rodados';
     }
   }
 }
@@ -2357,10 +2853,26 @@ function renderInvoiceView() {
 
   document.getElementById('inv-tutor-name').textContent = invoice.tutorName;
   document.getElementById('inv-period-text').textContent = `Referência: ${invoice.periodMonthYear}`;
-  document.getElementById('inv-session-count').textContent = invoice.totalSessions;
-  document.getElementById('inv-session-cost').textContent = `R$ ${invoice.sessionsTotalCost.toFixed(2).replace('.', ',')}`;
-  document.getElementById('inv-adjustments-cost').textContent = `R$ ${invoice.adjustmentsTotalCost.toFixed(2).replace('.', ',')}`;
-  document.getElementById('inv-total-cost').textContent = `R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}`;
+  
+  const walksRow = document.getElementById('inv-walks-row');
+  const sessionCountEl = document.getElementById('inv-session-count');
+  const sessionCostEl = document.getElementById('inv-session-cost');
+  if (sessionCountEl) sessionCountEl.textContent = invoice.sessionsCount;
+  if (sessionCostEl) sessionCostEl.textContent = `R$ ${invoice.sessionsTotalCost.toFixed(2).replace('.', ',')}`;
+  if (walksRow) walksRow.style.display = invoice.sessionsCount > 0 ? 'flex' : 'none';
+
+  const bathsRow = document.getElementById('inv-baths-row');
+  const bathCountEl = document.getElementById('inv-bath-count');
+  const bathCostEl = document.getElementById('inv-bath-cost');
+  if (bathCountEl) bathCountEl.textContent = invoice.bathsCount;
+  if (bathCostEl) bathCostEl.textContent = `R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')}`;
+  if (bathsRow) bathsRow.style.display = invoice.bathsCount > 0 ? 'flex' : 'none';
+
+  const adjCostEl = document.getElementById('inv-adjustments-cost');
+  if (adjCostEl) adjCostEl.textContent = `R$ ${invoice.adjustmentsTotalCost.toFixed(2).replace('.', ',')}`;
+  
+  const totalCostEl = document.getElementById('inv-total-cost');
+  if (totalCostEl) totalCostEl.textContent = `R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}`;
 }
 
 // -------------------------------------------------------------
@@ -2437,6 +2949,7 @@ async function triggerAutoSyncIfEligible(reason = 'auto') {
       groups: state.groups,
       pets: state.pets,
       sessions: state.sessions,
+      baths: state.baths || [],
       adjustments: state.adjustments
     };
 
@@ -2734,6 +3247,7 @@ function setupSettingsController() {
           groups: state.groups,
           pets: state.pets,
           sessions: state.sessions,
+          baths: state.baths || [],
           adjustments: state.adjustments
         };
         const res = await syncBackupToGoogle(state.settings.googleScriptUrl, payload);
@@ -2780,6 +3294,7 @@ function setupSettingsController() {
         groups: state.groups,
         pets: state.pets,
         sessions: state.sessions,
+        baths: state.baths || [],
         adjustments: state.adjustments
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2875,7 +3390,7 @@ async function openRestoreBackupModal() {
           const pullRes = await pullBackupFromGoogle(state.settings.googleScriptUrl, fileName);
 
           if (pullRes.payload) {
-            const { tutors, groups, pets, sessions, adjustments } = pullRes.payload;
+            const { tutors, groups, pets, sessions, baths, adjustments } = pullRes.payload;
             if (tutors) {
               for (const item of tutors) await StorageService.saveTutor(item);
             }
@@ -2887,6 +3402,9 @@ async function openRestoreBackupModal() {
             }
             if (sessions) {
               for (const item of sessions) await StorageService.saveSession(item);
+            }
+            if (baths) {
+              for (const item of baths) await StorageService.saveBath(item);
             }
             if (adjustments) {
               for (const item of adjustments) await StorageService.saveAdjustment(item);

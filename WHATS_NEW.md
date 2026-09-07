@@ -1,6 +1,6 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto completo de melhorias de usabilidade, alertas inteligentes de tempo, proteção contra desligamento do celular, fotos em alta qualidade e sincronização automática.
+Bem-vinda à nova versão do **Petwalker (v2.9.3 / Cache v35)**! Esta atualização traz o módulo de **Gestão de Banhos dos Pets**, precificação individual por pet no cadastro de tutores, **cards separados de totais mensais de passeios e banhos na tela de faturamento** e melhorias ergonômicas mobile-first.
 
 ---
 
@@ -8,10 +8,44 @@ Bem-vinda à nova versão do **Petwalker**! Esta atualização traz um conjunto 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔔 Alertas de Tempo    🚗 Odômetro (Km)      🛡️ Anti-Crash no Cronômetro    │
-│ 📸 Cartão de Foto 3D   ⏱️ Duração Fixa Auto  ☁️ Auto-Backup no Wi-Fi       │
+│ 💰 Totais Separados   🛁 Gestão de Banhos     📑 Fatura Integrada Cronológica │
+│ 🐕 Preço por Pet      🔔 Alertas de Tempo     🛡️ Anti-Crash no Cronômetro    │
+│ 📱 Layout 2x2 Mobile  🚗 Odômetro (Km)        ☁️ Auto-Backup no Wi-Fi       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 💰 1. Tela de Faturamento com Totais Mensais Separados
+
+### 📊 Cards Dedicados para Passeios e Banhos
+- **Faturamento Total**: Faturamento líquido consolidado do mês com total de tutores atendidos e ajustes.
+- **🐾 Total Passeios**: Card exclusivo exibindo o valor total faturado em passeios e quantidade de sessões/pets no mês.
+- **🛁 Total Banhos**: Card exclusivo exibindo o valor total faturado em banhos e contagem de banhos/pets no mês.
+- **⏱️ Tempo & Distância**: Tempo total dedicado e quilometragem rodada.
+- **Layout Mobile 2x2**: Grid responsivo espaçoso que evita cortes horizontais em smartphones e expande para 4 colunas em telas maiores.
+
+---
+
+## 🛁 2. Módulo de Gestão de Banhos
+
+### 🧼 Aba Dedicada na Barra Inferior
+- Nova aba **"Banhos"** na barra de navegação principal.
+- **Barra de Datas em Cápsula (*Pill Bar*)**: navegação fluida com botões circulares `[ ◀ ]`, `[ Data/Hoje ]` e `[ ▶ ]`.
+- **Estatísticas do Dia**: contadores visuais com Total de Banhos e Valor Faturado do dia selecionado.
+- **Registro Rápido e Completo**: Lançamento direto com Tutor, Pet (com autopreenchimento do valor cadastrado), Data, Horário de Início/Fim, Valor Cobrado e Observações/Produtos Utilizados.
+- **Cards de Banho no Diário**: exibição com badge do pet, horários, valor, observações e botões de editar e excluir.
+
+### 🐶 Precificação Individual de Banho no Cadastro de Tutores
+- No cadastro e edição de tutores, os pets agora possuem linha individual com **Nome do Pet**, **Raça** e **Valor do Banho (R$)**.
+- Tutores flexíveis:
+  - Podem ter **apenas passeios**, **apenas banhos** (valores de passeio opcionais) ou **ambos**.
+  - Retrocompatibilidade total garantida para tutores e pets já cadastrados.
+
+### 📑 Faturamento Unificado & Relatórios
+- **Fatura Mensal Integrada**: consolida passeios e banhos em **ordem cronológica exata**, separando a contagem de passeios e banhos no resumo do tutor.
+- **Resumo no WhatsApp**: texto limpo e humanizado contendo o total de passeios, total de banhos, discriminação cronológica dos atendimentos com ícones representativos (`🐾 Passeio`, `🛁 Banho`), ajustes e chave PIX.
+- **E-mail HTML Profissional**: template estilizado com tabela discriminada de itens e design moderno.
 
 ---
 

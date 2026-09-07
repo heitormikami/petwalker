@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'petwalker_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 
@@ -31,11 +31,18 @@ function openDB() {
         if (!db.objectStoreNames.contains('pets')) {
           const petStore = db.createObjectStore('pets', { keyPath: 'id' });
           petStore.createIndex('groupId', 'groupId', { unique: false });
+          petStore.createIndex('tutorId', 'tutorId', { unique: false });
         }
         if (!db.objectStoreNames.contains('sessions')) {
           const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
           sessionStore.createIndex('groupId', 'groupId', { unique: false });
           sessionStore.createIndex('date', 'date', { unique: false });
+        }
+        if (!db.objectStoreNames.contains('baths')) {
+          const bathStore = db.createObjectStore('baths', { keyPath: 'id' });
+          bathStore.createIndex('tutorId', 'tutorId', { unique: false });
+          bathStore.createIndex('petId', 'petId', { unique: false });
+          bathStore.createIndex('date', 'date', { unique: false });
         }
         if (!db.objectStoreNames.contains('adjustments')) {
           const adjStore = db.createObjectStore('adjustments', { keyPath: 'id' });
@@ -179,6 +186,11 @@ export const StorageService = {
   getSessions: () => getAll('sessions'),
   saveSession: (session) => putItem('sessions', session),
   deleteSession: (id) => deleteItem('sessions', id),
+
+  // Banhos
+  getBaths: () => getAll('baths'),
+  saveBath: (bath) => putItem('baths', bath),
+  deleteBath: (id) => deleteItem('baths', id),
 
   // Ajustes Financeiros
   getAdjustments: () => getAll('adjustments'),
