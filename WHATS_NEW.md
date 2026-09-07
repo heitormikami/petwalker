@@ -1,6 +1,6 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.4 / Cache v36)**! Esta atualização traz o **redesign completo da tela de Ajustes no estilo nativo Apple iOS (Grouped Inset Cards)**, botão dedicado para cancelamento de passeios ativos com confirmação segura, alinhamento numérico à direita e padronização visual em todos os modais.
+Bem-vinda à nova versão do **Petwalker (v2.9.4 / Cache v38)**! Esta atualização traz a **consolidação arquitetural em módulo canônico único (ADR-0002)**, o redesign completo da tela de Ajustes no estilo nativo Apple iOS, botão dedicado para cancelamento de passeios ativos e cards de tutores com largura total.
 
 ---
 
@@ -8,9 +8,9 @@ Bem-vinda à nova versão do **Petwalker (v2.9.4 / Cache v36)**! Esta atualizaç
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🎨 Ajustes Apple Inset │ 🛑 Cancelar Passeio   │ 🐾 Cards Tutores Equilibrados│
-│ 💬 WhatsApp Direto     │ 🔢 Valores Alinhados  │ 📱 Ergonomia iPhone XR       │
-│ 💰 Totais Separados    │ 🛁 Gestão de Banhos   │ ☁️ Auto-Backup no Wi-Fi      │
+│ 🏛️ ADR-0002 Módulo Único │ 🎨 Ajustes Apple Inset │ 🛑 Cancelar Passeio       │
+│ 🐾 Cards Tutores Limpos │ 🔢 Valores Alinhados   │ 📱 Ergonomia iPhone XR    │
+│ 💰 Totais Separados     │ 🛁 Gestão de Banhos    │ ☁️ Auto-Backup no Wi-Fi   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -52,6 +52,14 @@ A tela de configurações foi reestruturada para eliminar o bloco longo de rolag
   - **🐾 Pets & Banhos**: Lista de pets cadastrados com seus respectivos valores de banho (`🛁 R$ XX,XX`) alinhados e legíveis.
   - **🐕 Passeios**: Nome do grupo e badges de preços por duração (`30m: R$ XX,XX` e `60m: R$ XX,XX`).
 - **Ações na Base**: Botão expandido `✏️ Editar Tutor` e botão seguro `🗑️ Excluir`.
+
+---
+
+## 🏛️ 5. Consolidação Arquitetural: Módulo Canônico Único (ADR-0002)
+
+- **Eliminação do Clone `app.v5.js`**: O repositório agora possui exclusivamente **`src/app.js`** como ponto de entrada canônico da aplicação, eliminando 3.600 linhas de código duplicado mantido manualmente.
+- **Teste da Deleção Concluído**: A remoção do arquivo duplicado passou no *teste da deleção* com redução imediata da dívida técnica sem perda de funcionalidades.
+- **Invalidação Exclusiva via Service Worker**: Fica expressamente estabelecido pelo **ADR-0002** que a quebra de cache deve ser gerida pelo Service Worker (`CACHE_NAME = 'petwalker-v38'`), sendo proibida a criação de clones versionados em disco (`app.vX.js`).
 
 ## 💰 1. Tela de Faturamento com Totais Mensais Separados
 

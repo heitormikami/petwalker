@@ -1,8 +1,8 @@
-import { StorageService } from './services/storage.js?v=36';
-import { PushService } from './services/pushService.js?v=36';
-import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=36';
-import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=36';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=36';
+import { StorageService } from './services/storage.js?v=38';
+import { PushService } from './services/pushService.js?v=38';
+import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=38';
+import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=38';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=38';
 
 // Fallback defensivo caso o navegador tenha mantido cópia antiga de storage.js em memória
 if (typeof StorageService !== 'undefined') {
@@ -60,7 +60,7 @@ if (typeof StorageService !== 'undefined') {
 export const APP_CONFIG = {
   version: '2.9.4',
   build: '2026.09.07',
-  cacheVersion: 'v36'
+  cacheVersion: 'v38'
 };
 
 function renderAppVersionInfo() {

@@ -82,4 +82,5 @@ graph TD
 > 3. Atualizar o `CONTEXT.md` com eventuais novos termos de domínio ou regras de arquitetura.
 > 4. Incrementar a versão de cache no `sw.js` caso haja novos assets ou lógica de frontend.
 > 5. Executar a suíte de testes automatizados (`node tests/domain.test.js`).
+> 6. Manter estritamente o módulo canônico único (`src/app.js`), sendo terminantemente proibida a criação de clones versionados (`app.vX.js`), conforme ADR-0002.
 
