@@ -43,16 +43,15 @@ A tela de configurações foi reestruturada para eliminar o bloco longo de rolag
 - **Padronização de Ações em Modais**: Todos os botões de ação foram harmonizados com ícones representativos (`💾 Salvar...`, `✕ Cancelar`, `✓ Confirmar`).
 - **Consistência de Rótulos de Horário**: Padronização para *"Horário Início"* e *"Horário Fim"* em todos os modais.
 - **Melhorias de Copy**: Saudação humanizada no topo da aba Passeio (*"Hora do passeio! 🐾"*), e correção gramatical (*"Observações Rápidas de Bem-Estar"*).
-## 🐾 4. Redesign do Card de Tutor (Anti-Vácuo Lateral & Equilíbrio Visual)
+## 🐾 4. Redesign do Card de Tutor (Cabeçalho com Largura Total & Anti-Espremimento)
 
 - **Avatar com Iniciais**: Identificação visual rápida de cada tutor com avatar circular em gradiente suave baseado nas iniciais do nome.
-- **Acesso Rápido ao WhatsApp**: Botão direto `💬 WhatsApp` estilizado no canto superior direito do card, sanitizando o número e disparando conversa direta sem intermediários.
-- **Contador de Pets**: Badge `🐾 X pets` alinhado à direita no cabeçalho.
-- **Grade 2-Colunas Perfeitamente Equilibrada**:
+- **Cabeçalho sem Espremimento**: O nome, telefone e e-mail agora ocupam **100% da largura útil** do card, garantindo que e-mails longos e números de telefone caibam em linhas únicas sem quebra indesejada.
+- **Remoção de Redundâncias**: Remoção do selo duplicado de pets no topo (já detalhado no quadro inferior de pets) e do botão lateral que comprimia os dados de contato em telas mobile.
+- **Grade de Serviços Equilibrada**:
   - **🐾 Pets & Banhos**: Lista de pets cadastrados com seus respectivos valores de banho (`🛁 R$ XX,XX`) alinhados e legíveis.
   - **🐕 Passeios**: Nome do grupo e badges de preços por duração (`30m: R$ XX,XX` e `60m: R$ XX,XX`).
 - **Ações na Base**: Botão expandido `✏️ Editar Tutor` e botão seguro `🗑️ Excluir`.
-- **Eliminação do Espaço Vazio**: Ocupação harmoniosa da largura no viewport de smartphones como iPhone XR.
 
 ## 💰 1. Tela de Faturamento com Totais Mensais Separados
 

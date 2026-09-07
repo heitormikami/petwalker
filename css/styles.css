@@ -1141,8 +1141,7 @@ details.settings-details[open] summary {
 
 .tutor-card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }

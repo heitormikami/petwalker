@@ -2577,41 +2577,27 @@ function renderTutorsList() {
 
     return `
       <div class="tutor-card">
-        <!-- Cabeçalho em 2 Colunas Perfeitamente Equilibradas -->
+        <!-- Cabeçalho do Tutor (Largura Total para Dados de Contato) -->
         <div class="tutor-card-header">
-          <div style="display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0;">
-            <div class="tutor-avatar">
-              ${initials}
-            </div>
-            <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); word-break: break-word; line-height: 1.25;">
-                ${t.name}
-              </div>
-              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">
-                ${t.phone ? `
-                  <a href="tel:${t.phone}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                    <span>📱</span> <span style="text-decoration: underline;">${t.phone}</span>
-                  </a>
-                ` : '<span style="color: var(--text-light);">📱 Sem telefone</span>'}
-                ${t.email ? `
-                  <a href="mailto:${t.email}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; word-break: break-all;">
-                    <span>✉️</span> <span>${t.email}</span>
-                  </a>
-                ` : '<span style="color: var(--text-light);">✉️ Sem e-mail</span>'}
-              </div>
-            </div>
+          <div class="tutor-avatar">
+            ${initials}
           </div>
-
-          <!-- Lado Direito: Ações Rápidas & Badge -->
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
-            ${cleanPhone ? `
-              <a href="https://wa.me/${cleanPhone}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #25D366; color: #FFFFFF; font-size: 0.76rem; font-weight: 700; padding: 5px 10px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; gap: 4px; text-decoration: none; box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);">
-                <span>💬</span> <span>WhatsApp</span>
-              </a>
-            ` : ''}
-            <span class="badge" style="background: var(--bg-cream); border: 1px solid var(--border); font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 2px 8px; border-radius: var(--radius-pill);">
-              🐾 ${tPets.length} ${tPets.length === 1 ? 'pet' : 'pets'}
-            </span>
+          <div style="min-width: 0; flex: 1;">
+            <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); word-break: break-word; line-height: 1.25;">
+              ${t.name}
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; display: flex; flex-direction: column; gap: 3px;">
+              ${t.phone ? `
+                <a href="tel:${t.phone}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                  <span>📱</span> <span style="text-decoration: underline;">${t.phone}</span>
+                </a>
+              ` : '<span style="color: var(--text-light); display: inline-flex; align-items: center; gap: 6px;"><span>📱</span> Sem telefone</span>'}
+              ${t.email ? `
+                <a href="mailto:${t.email}" style="color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; word-break: break-all;">
+                  <span>✉️</span> <span>${t.email}</span>
+                </a>
+              ` : '<span style="color: var(--text-light); display: inline-flex; align-items: center; gap: 6px;"><span>✉️</span> Sem e-mail</span>'}
+            </div>
           </div>
         </div>
 
