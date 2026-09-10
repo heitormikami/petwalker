@@ -10,17 +10,17 @@ test('UI Integrity - Header possui botão ⚙️ Ajustes e 🔒 Bloquear', () =>
   assert.ok(htmlContent.includes('id="btn-lock-app"'), 'Header deve conter o botão btn-lock-app');
 });
 
-test('UI Integrity - Bottom Navigation possui exatamente 6 botões operacionais com Pet Sitter', () => {
+test('UI Integrity - Bottom Navigation possui exatamente 6 botões operacionais na ordem correta', () => {
   const bottomNavMatch = htmlContent.match(/<nav class="bottom-nav">([\s\S]*?)<\/nav>/);
   assert.ok(bottomNavMatch, 'Elemento .bottom-nav deve existir');
   const bottomNavHtml = bottomNavMatch[1];
 
-  assert.ok(bottomNavHtml.includes('data-target="view-walk"'), 'Nav deve ter view-walk');
-  assert.ok(bottomNavHtml.includes('data-target="view-daily"'), 'Nav deve ter view-daily');
-  assert.ok(bottomNavHtml.includes('data-target="view-baths"'), 'Nav deve ter view-baths');
-  assert.ok(bottomNavHtml.includes('data-target="view-tutors"'), 'Nav deve ter view-tutors');
-  assert.ok(bottomNavHtml.includes('data-target="view-invoice"'), 'Nav deve ter view-invoice');
-  assert.ok(bottomNavHtml.includes('data-target="view-sitter"'), 'Nav deve ter view-sitter (Pet Sitter)');
+  const targets = [...bottomNavHtml.matchAll(/data-target="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(
+    targets,
+    ['view-walk', 'view-daily', 'view-baths', 'view-sitter', 'view-tutors', 'view-invoice'],
+    'Botões devem estar na ordem: Passeio, Diário, Banhos, Pet Sitter, Tutores, Faturas'
+  );
   assert.ok(!bottomNavHtml.includes('data-target="view-settings"'), 'view-settings não deve mais estar na barra inferior');
 });
 
