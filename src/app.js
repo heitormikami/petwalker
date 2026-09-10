@@ -117,8 +117,10 @@ export const APP_CONFIG = {
 function renderAppVersionInfo() {
   const versionEl = document.getElementById('app-version-display');
   const buildEl = document.getElementById('app-build-display');
+  const lockVersionEl = document.getElementById('lock-app-version');
   if (versionEl) versionEl.textContent = APP_CONFIG.version;
   if (buildEl) buildEl.textContent = `Local-First • Offline Ready • Build ${APP_CONFIG.build} (${APP_CONFIG.cacheVersion})`;
+  if (lockVersionEl) lockVersionEl.textContent = `v${APP_CONFIG.version} • ${APP_CONFIG.cacheVersion}`;
 }
 
 // ESTADO DA APLICAÇÃO

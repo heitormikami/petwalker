@@ -626,8 +626,8 @@ input[type="date"]::-webkit-date-and-time-value {
 .lock-logo {
   width: 72px;
   height: 72px;
-  color: var(--primary);
   margin-bottom: 16px;
+  object-fit: contain;
 }
 
 .pin-dots {

@@ -31,10 +31,7 @@
 
   <!-- Tela de Bloqueio por PIN / Biometria -->
   <div id="lock-screen" class="lock-screen" style="display: none;">
-    <svg class="lock-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-      <circle cx="12" cy="12" r="3" fill="currentColor"/>
-    </svg>
+    <img src="assets/favicon.svg" width="72" height="72" alt="Petwalker" class="lock-logo" style="border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-bottom: 16px;">
     <h2 style="font-size: 1.5rem; color: var(--primary);">Petwalker</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;">
       <p id="lock-subtitle" style="color: var(--text-muted); font-size: 0.9rem;">Insira o PIN de 4 dígitos</p>
@@ -66,6 +63,9 @@
     <button id="btn-forgot-pin" class="btn btn-ghost btn-sm" style="margin-top: 14px; color: var(--text-muted); font-size: 0.8rem; text-decoration: underline; background: transparent; border: none; cursor: pointer;">
       Esqueceu o PIN?
     </button>
+    <div id="lock-app-version" style="margin-top: 18px; font-size: 0.75rem; color: var(--text-muted); opacity: 0.75; font-weight: 500;">
+      v2.9.5 • v39
+    </div>
   </div>
 
   <!-- Header Superior -->
@@ -574,8 +574,8 @@
 
     <!-- VERSÃO DO APP -->
     <div style="margin: 20px 0 10px 0; text-align: center; color: var(--text-muted); font-size: 0.78rem;">
-      <div>🐾 <strong>Petwalker PWA</strong> • Versão <span id="app-version-display">2.9.4</span></div>
-      <div id="app-build-display" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Local-First • Offline Ready • Build 2026.09.07 (v38)</div>
+      <div>🐾 <strong>Petwalker PWA</strong> • Versão <span id="app-version-display">2.9.5</span></div>
+      <div id="app-build-display" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Local-First • Offline Ready • Build 2026.09.10 (v39)</div>
     </div>
   </main>
 

@@ -62,3 +62,10 @@ test('UI Integrity - Tela de Faturas possui métricas e detalhamento de Pet Sitt
   assert.ok(htmlContent.includes('id="inv-sitter-count"'), 'Fatura individual deve conter inv-sitter-count');
   assert.ok(htmlContent.includes('id="inv-sitter-cost"'), 'Fatura individual deve conter inv-sitter-cost');
 });
+
+test('UI Integrity - Tela de Bloqueio possui ícone oficial e indicador de versão', () => {
+  const lockScreenMatch = htmlContent.match(/<div id="lock-screen"[\s\S]*?<\/div>\s*<\/div>/);
+  assert.ok(lockScreenMatch, 'Elemento #lock-screen deve existir');
+  assert.ok(htmlContent.includes('src="assets/favicon.svg"'), 'Tela de bloqueio deve usar ícone oficial');
+  assert.ok(htmlContent.includes('id="lock-app-version"'), 'Tela de bloqueio deve conter elemento de versão');
+});
