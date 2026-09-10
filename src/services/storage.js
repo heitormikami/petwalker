@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'petwalker_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise = null;
 
@@ -43,6 +43,11 @@ function openDB() {
           bathStore.createIndex('tutorId', 'tutorId', { unique: false });
           bathStore.createIndex('petId', 'petId', { unique: false });
           bathStore.createIndex('date', 'date', { unique: false });
+        }
+        if (!db.objectStoreNames.contains('petSitters')) {
+          const sitterStore = db.createObjectStore('petSitters', { keyPath: 'id' });
+          sitterStore.createIndex('tutorId', 'tutorId', { unique: false });
+          sitterStore.createIndex('date', 'date', { unique: false });
         }
         if (!db.objectStoreNames.contains('adjustments')) {
           const adjStore = db.createObjectStore('adjustments', { keyPath: 'id' });
@@ -191,6 +196,11 @@ export const StorageService = {
   getBaths: () => getAll('baths'),
   saveBath: (bath) => putItem('baths', bath),
   deleteBath: (id) => deleteItem('baths', id),
+
+  // Pet Sitter
+  getPetSitters: () => getAll('petSitters'),
+  savePetSitter: (sitter) => putItem('petSitters', sitter),
+  deletePetSitter: (id) => deleteItem('petSitters', id),
 
   // Ajustes Financeiros
   getAdjustments: () => getAll('adjustments'),

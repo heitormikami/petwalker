@@ -5,8 +5,15 @@
 ---
 
 ## ✨ Funcionalidades Principais
- 
-### ⚙️ Ajustes & Experiência Nativa Apple iOS (Novo!)
+### 🏠 Gestão Operacional de Pet Sitter (Novo!)
+- **Aba Dedicada "Pet Sitter"**: Interface completa com acesso direto na barra inferior para visualização, lançamento diário e edição de visitas e cuidados domiciliares.
+- **Seleção Multi-Pets Dinâmica**: Suporte ao atendimento de um ou múltiplos pets da mesma família em uma única sessão de visita.
+- **Navegador Diário (*Pill Bar*) & Métricas**: Indicadores em tempo real para total de visitas do dia, visitas do mês e faturamento mensal de pet sitter.
+- **Autopreenchimento de Taxa**: Permite configurar uma taxa padrão de Pet Sitter no cadastro de cada tutor, agilizando o registro diário com valor customizável por visita.
+- **Faturamento e Relatórios Unificados**: Consolidação automática de passeios, banhos e pet sitters em relatórios detalhados, faturas de clientes, mensagens de WhatsApp e e-mails HTML.
+
+### ⚙️ Ajustes & Experiência Nativa Apple iOS
+- **Botão de Ajustes no Cabeçalho Superior**: Posicionado no topo ao lado do botão de bloqueio (`⚙️`), liberando a barra inferior para manter exatamente 6 ações essenciais com máxima ergonomia tátil.
 - **Cards Agrupados Estilo Apple (*Grouped Inset Cards*)**: Divisão das configurações em 4 blocos táteis independentes com cantos arredondados e fundo elevado: *Geral & Cobrança*, *Segurança & Acesso*, *Alertas & Passeio* e *Nuvem & Backups*.
 - **Controle de Notificações com `<details>` Retrátil**: Configurações avançadas de APNs e Web Push agrupadas de forma colapsável, mantendo a tela visualmente limpa e intuitiva.
 - **Cancelamento Seguro de Passeio Ativo**: Botão dedicado `✕ Cancelar Passeio` com diálogo de confirmação para abortar cronômetros acidentais sem gerar faturas indesejadas.

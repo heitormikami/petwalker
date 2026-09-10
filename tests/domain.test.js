@@ -278,5 +278,66 @@ test('calculateMonthlyInvoice - tutor exclusivo de banho (sem passeios)', () => 
   assert.ok(wa.includes('R$ 80,00'));
 });
 
+test('calculateMonthlyInvoice - tutor exclusivo de pet sitter', () => {
+  const tutor = { id: 'tut-sitter', name: 'Juliana Lima' };
+  const sitters = [
+    { id: 'ps-1', tutorId: 'tut-sitter', petNames: ['Pipoca', 'Luna'], date: '2026-08-12', startTime: '10:00', endTime: '12:00', cost: 120.00 }
+  ];
+
+  const invoice = calculateMonthlyInvoice(tutor, [], [], [], '2026-08', 'pix@email.com', [], sitters);
+
+  assert.equal(invoice.sessionsCount, 0);
+  assert.equal(invoice.bathsCount, 0);
+  assert.equal(invoice.petSittersCount, 1);
+  assert.equal(invoice.petSittersTotalCost, 120.00);
+  assert.equal(invoice.totalToPay, 120.00);
+
+  const wa = formatWhatsAppSummary(invoice);
+  assert.ok(!wa.includes('Total de Passeios'));
+  assert.ok(!wa.includes('Total de Banhos'));
+  assert.ok(wa.includes('Total de Pet Sitter realizados:* 1'));
+  assert.ok(wa.includes('Pet Sitter Pipoca, Luna (10:00 às 12:00): R$ 120,00'));
+  assert.ok(wa.includes('Total a pagar:* R$ 120,00'));
+});
+
+test('calculateMonthlyInvoice - combina passeios, banhos e pet sitter em ordem cronológica', () => {
+  const tutor = { id: 'tut-all', name: 'Fernanda Rocha' };
+  const groups = [{ id: 'grp-all', tutorId: 'tut-all', name: 'Thor & Mel', rate60min: 50.00 }];
+  const sessions = [
+    { id: 's-1', groupId: 'grp-all', date: '2026-08-10', startTime: '09:00', contractedDuration: 60 }
+  ];
+  const baths = [
+    { id: 'b-1', tutorId: 'tut-all', petName: 'Thor', date: '2026-08-05', startTime: '14:00', endTime: '15:00', cost: 70.00 }
+  ];
+  const sitters = [
+    { id: 'ps-2', tutorId: 'tut-all', petNames: ['Mel'], date: '2026-08-20', startTime: '16:00', endTime: '18:00', cost: 100.00 }
+  ];
+
+  const invoice = calculateMonthlyInvoice(tutor, groups, sessions, [], '2026-08', 'pix@email.com', baths, sitters);
+
+  assert.equal(invoice.sessionsCount, 1);
+  assert.equal(invoice.bathsCount, 1);
+  assert.equal(invoice.petSittersCount, 1);
+  assert.equal(invoice.sessionsTotalCost, 50.00);
+  assert.equal(invoice.bathsTotalCost, 70.00);
+  assert.equal(invoice.petSittersTotalCost, 100.00);
+  assert.equal(invoice.totalToPay, 220.00);
+
+  assert.equal(invoice.detailedItems.length, 3);
+  assert.equal(invoice.detailedItems[0].type, 'bath');
+  assert.equal(invoice.detailedItems[0].date, '2026-08-05');
+  assert.equal(invoice.detailedItems[1].type, 'walk');
+  assert.equal(invoice.detailedItems[1].date, '2026-08-10');
+  assert.equal(invoice.detailedItems[2].type, 'petsitter');
+  assert.equal(invoice.detailedItems[2].date, '2026-08-20');
+
+  const emailHtml = formatEmailHtml(invoice);
+  assert.ok(emailHtml.includes('Passeios (1): R$ 50,00'));
+  assert.ok(emailHtml.includes('Banhos (1): R$ 70,00'));
+  assert.ok(emailHtml.includes('Pet Sitter (1): R$ 100,00'));
+  assert.ok(emailHtml.includes('🏠 Pet Sitter (Mel)'));
+});
+
+
 
 

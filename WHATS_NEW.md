@@ -1,6 +1,60 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.4 / Cache v38)**! Esta atualização traz a **consolidação arquitetural em módulo canônico único (ADR-0002)**, o redesign completo da tela de Ajustes no estilo nativo Apple iOS, botão dedicado para cancelamento de passeios ativos e cards de tutores com largura total.
+Bem-vinda à nova versão do **Petwalker (v2.9.5 / Cache v39)**! Esta atualização traz a **Gestão Completa de Atividades de Pet Sitter**, a reorganização da barra de navegação com o botão de **Ajustes no Cabeçalho Superior**, suporte a múltiplos pets em uma única visita, faturamento integrado e backup na nuvem.
+
+---
+
+## 🌟 Principais Destaques (v2.9.5)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🏠 Gestão de Pet Sitter │ ⚙️ Ajustes no Cabeçalho│ 🐾 Multi-Pets por Visita   │
+│ 💰 Faturamento Unificado│ 📊 Métricas Dedicadas  │ ☁️ Backup & Exportação JSON │
+│ 📲 WhatsApp & HTML Email│ 💵 Valor Padrão Tutor  │ ⏱️ Início/Fim & Observações │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏠 1. Gestão Completa de Atividades de Pet Sitter
+
+- **Nova Aba Dedicada "Pet Sitter" (`view-sitter`)**:
+  - Localizada diretamente na barra de navegação inferior com ícone `🏠 Pet Sitter`.
+  - Navegador diário em formato de pílula (*Pill Bar* `◀ Hoje ▶`) para fácil alternância de datas.
+  - Indicadores de resumo em tempo real: **Hoje** (visitas do dia), **Mês** (visitas no mês selecionado) e **Faturamento Mês** (total em R$ de visitas).
+  - Listagem diária com cards ricos apresentando tutor, pets atendidos, horário de início e fim, duração calculada, valor cobrado e notas de bem-estar.
+  - Ações rápidas de `✏️ Editar` e `🗑️ Excluir` por registro.
+
+- **Modal Dinâmico de Lançamento (`+ Registrar Pet Sitter`)**:
+  - **Seleção de Tutor**: Carrega automaticamente a lista de tutores ativos.
+  - **Seleção Multi-Pets Dinâmica**: Chips táteis interativos que permitem selecionar um ou múltiplos pets daquele tutor para a visita.
+  - **Campos Operacionais**: Data, Horário de Início, Horário de Término, Valor (R$) e Observações de Bem-Estar.
+  - **Valor Padrão no Tutor**: Novo campo no perfil do tutor para taxa padrão de pet sitter, autopreenchendo o valor no modal de forma editável.
+
+---
+
+## ⚙️ 2. Reorganização Ergonômica da Barra de Navegação
+
+- **Ajustes no Cabeçalho Superior**:
+  - O botão de `⚙️ Ajustes` foi promovido para o cabeçalho superior (ao lado do botão de bloqueio `🔒 Bloquear`), tornando-o acessível de qualquer ponto do app com 1 toque.
+  - Preserva o limite ergonômico de **6 botões na barra de navegação inferior** (`Passeio`, `Diário`, `Banhos`, `Pet Sitter`, `Tutores`, `Faturas`), sem espremer elementos em telas mobile.
+
+---
+
+## 💰 3. Faturamento & Relatórios Integrados
+
+- **Cálculo Unificado de Mensalidades**:
+  - O domínio financeiro (`calculateMonthlyInvoice`) agora consolida automaticamente passeios, banhos e pet sitters.
+  - Card dedicado de **🏠 Total Pet Sitter** no resumo geral do mês (quantidade e valor acumulado).
+  - Linha discriminada de Pet Sitter na prévia da fatura de cada tutor.
+  - **WhatsApp & E-mail HTML**: Inclusão dos registros de pet sitter em ordem estritamente cronológica, com horários, pets atendidos e subtotais claros.
+
+---
+
+## ☁️ 4. Backup e Segurança dos Dados
+
+- **IndexedDB v3**: Nova tabela local `petSitters` com índices por data e tutor para buscas instantâneas.
+- **Sincronização Nuvem & Exportação JSON**: O backup no Google Drive e a exportação manual agora incluem automaticamente todas as atividades de pet sitter com restauração 100% retrocompatível.
 
 ---
 

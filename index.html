@@ -74,12 +74,17 @@
       <img src="assets/favicon.svg" width="36" height="36" alt="Petwalker" style="border-radius: 8px; flex-shrink: 0;">
       <div>
         <div class="brand-name">Petwalker</div>
-        <div class="brand-subtitle">Registro de Passeios</div>
+        <div class="brand-subtitle">Registro de Atividades Pet</div>
       </div>
     </div>
-    <button class="btn btn-outline btn-sm" id="btn-lock-app">
-      🔒 Bloquear
-    </button>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="btn btn-outline btn-sm" id="btn-header-settings" title="Ajustes e Configurações" style="padding: 6px 10px; font-size: 0.8rem; font-weight: 700;">
+        ⚙️ Ajustes
+      </button>
+      <button class="btn btn-outline btn-sm" id="btn-lock-app" style="padding: 6px 10px; font-size: 0.8rem;">
+        🔒 Bloquear
+      </button>
+    </div>
   </header>
 
   <!-- VIEW 1: REGISTRO / PASSEIO ATIVO -->
@@ -285,6 +290,61 @@
     </div>
   </main>
 
+  <!-- VIEW: PET SITTER (DIÁRIO DE PET SITTER) -->
+  <main id="view-sitter" class="view">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+        <h3 class="card-title" style="margin-bottom: 0;">🏠 Diário de Pet Sitter</h3>
+        <button class="btn btn-primary btn-sm" id="btn-open-sitter-modal">+ Registrar Pet Sitter</button>
+      </div>
+
+      <!-- Barra de Navegação por Datas (Pill Bar) -->
+      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 6px 10px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill);">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-prev" title="Dia Anterior" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+          ◀
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0;">
+          <input type="date" id="filter-sitter-date" class="form-input" style="padding: 4px 6px; font-size: 0.88rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 140px; height: 36px; white-space: nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sitter-date-today" title="Ir para Hoje" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-pill); height: 30px;">
+            Hoje
+          </button>
+        </div>
+
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-next" title="Próximo Dia" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+          ▶
+        </button>
+      </div>
+
+      <div id="sitter-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+        <div style="background: var(--primary-light); padding: 10px 8px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.7rem; color: var(--primary); font-weight: 700; text-transform: uppercase;">Visitas Hoje</div>
+          <div style="font-size: 1.35rem; font-weight: 800; color: var(--primary);" id="stat-sitter-daily-count">0</div>
+        </div>
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 10px 8px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;" id="stat-sitter-month-title">Total no Mês</div>
+          <div style="font-size: 1.35rem; font-weight: 800; color: var(--text-main);" id="stat-sitter-monthly-count">0</div>
+        </div>
+        <div style="background: var(--bg-cream); border: 1px solid var(--border); padding: 10px 8px; border-radius: var(--radius-sm); text-align: center;">
+          <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Faturado Mês</div>
+          <div style="font-size: 1.15rem; font-weight: 800; color: #10B981; margin-top: 2px;" id="stat-sitter-monthly-revenue">R$ 0</div>
+        </div>
+      </div>
+
+      <ul class="item-list" id="daily-sitters-list">
+        <!-- Inserido dinamicamente -->
+      </ul>
+
+      <!-- Empty State -->
+      <div id="sitter-empty-state" class="empty-state" style="display:none;">
+        <span class="empty-state-icon">🏠</span>
+        <div class="empty-state-title">Nenhuma visita nesta data</div>
+        <p class="empty-state-desc">Registre as atividades e cuidados domiciliares aos pets para acompanhar o histórico e lançar nas faturas.</p>
+        <button class="btn btn-primary btn-sm" id="btn-sitter-empty-cta">+ Registrar Pet Sitter</button>
+      </div>
+    </div>
+  </main>
+
   <!-- VIEW 3: TUTORES & GRUPOS DE PETS -->
   <main id="view-tutors" class="view">
     <div class="card">
@@ -330,6 +390,12 @@
         </div>
 
         <div class="summary-metric-card">
+          <div class="summary-metric-label">🏠 Total Pet Sitter</div>
+          <div class="summary-metric-value" id="metric-month-sitters-revenue" style="color: #10B981;">R$ 0,00</div>
+          <div class="summary-metric-subtext" id="metric-month-sitters-sub">0 visitas realizadas</div>
+        </div>
+
+        <div class="summary-metric-card">
           <div class="summary-metric-label">⏱️ Tempo &amp; Distância</div>
           <div class="summary-metric-value" id="metric-month-time">0h 0m</div>
           <div class="summary-metric-subtext" id="metric-month-km-sub">0 km rodados</div>
@@ -358,6 +424,10 @@
             <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-baths-row">
               <span>🛁 Banhos Realizados (<span id="inv-bath-count">0</span>):</span>
               <strong id="inv-bath-cost">R$ 0,00</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-sitters-row">
+              <span>🏠 Pet Sitter Realizados (<span id="inv-sitter-count">0</span>):</span>
+              <strong id="inv-sitter-cost">R$ 0,00</strong>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 4px;" id="inv-adjustments-row">
               <span>📝 Ajustes / Créditos / Débitos:</span>
@@ -551,12 +621,12 @@
       </svg>
       Faturas
     </button>
-    <button class="nav-item" data-target="view-settings">
+    <button class="nav-item" data-target="view-sitter">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
-      Ajustes
+      Pet Sitter
     </button>
   </nav>
 
@@ -616,6 +686,15 @@
             <label class="form-label">Valor 60 Min (R$)</label>
             <input type="number" step="0.01" inputmode="decimal" class="form-input" id="group-rate-60" placeholder="0.00" style="text-align: right;">
           </div>
+        </div>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--border);">
+        <h4 style="margin-bottom: 4px; font-size: 0.95rem; color: var(--primary);">🏠 Pet Sitter (Opcional)</h4>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 10px;">Valor padrão da visita para preenchimento rápido no registro.</p>
+
+        <div class="form-group">
+          <label class="form-label">Valor Padrão da Visita (R$)</label>
+          <input type="number" step="0.01" inputmode="decimal" class="form-input" id="tutor-sitter-rate" placeholder="0.00" style="text-align: right;">
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -679,6 +758,64 @@
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" class="btn btn-outline btn-full" id="btn-close-bath-modal">✕ Cancelar</button>
           <button type="submit" class="btn btn-primary btn-full">💾 Salvar Banho</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL LANÇAMENTO / EDIÇÃO DE PET SITTER -->
+  <div id="modal-pet-sitter" class="modal-overlay">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="card-title" id="modal-sitter-title" style="margin-bottom: 0;">🏠 Registrar Pet Sitter</h3>
+        <button type="button" class="modal-close-btn" id="btn-close-sitter-modal-x" title="Fechar">✕</button>
+      </div>
+      <form id="form-pet-sitter">
+        <input type="hidden" id="sitter-id">
+
+        <div class="form-group">
+          <label class="form-label">Tutor</label>
+          <select class="form-select" id="sitter-tutor-select" required>
+            <option value="">-- Selecione o Tutor --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Pets Atendidos (marque os atendidos)</label>
+          <div id="sitter-pets-container" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; min-height: 38px; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Selecione o tutor primeiro</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Data do Atendimento</label>
+          <input type="date" class="form-input" id="sitter-date" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label class="form-label">Horário Início</label>
+            <input type="time" class="form-input" id="sitter-start-time" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Horário Fim</label>
+            <input type="time" class="form-input" id="sitter-end-time" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Valor Cobrado (R$)</label>
+          <input type="number" step="0.01" inputmode="decimal" class="form-input" id="sitter-cost" required placeholder="0.00" style="text-align: right;">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Observações / Relato do Cuidado (Opcional)</label>
+          <textarea class="form-textarea" id="sitter-notes" rows="2" placeholder="Ex: Alimentou, trocou água, limpou caixa de areia, brincou..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-outline btn-full" id="btn-close-sitter-modal">✕ Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-full">💾 Salvar Atendimento</button>
         </div>
       </form>
     </div>
@@ -887,6 +1024,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.js?v=38"></script>
+  <script type="module" src="src/app.js?v=39"></script>
 </body>
 </html>

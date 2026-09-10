@@ -61,7 +61,7 @@ export function getLocalDateMonth(d = new Date()) {
  * @param {Array<Object>} [baths]
  * @returns {Object}
  */
-export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [], monthYearKey, pixKey = 'contato@petwalker.com.br', baths = []) {
+export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [], monthYearKey, pixKey = 'contato@petwalker.com.br', baths = [], petSitters = []) {
   const tutorGroupIds = new Set((groups || []).filter(g => g.tutorId === tutor.id).map(g => g.id));
   const groupMap = new Map((groups || []).map(g => [g.id, g]));
 
@@ -111,8 +111,33 @@ export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [
     };
   });
 
+  // Filtrar pet sitters do tutor no período
+  const periodPetSitters = (petSitters || []).filter(ps => {
+    if (ps.tutorId !== tutor.id) return false;
+    const sitterMonthKey = getLocalDateMonth(ps.date || ps.startTime || ps.createdAt);
+    return sitterMonthKey === monthYearKey;
+  });
+
+  let petSittersTotalCost = 0;
+  const detailedPetSitters = periodPetSitters.map(ps => {
+    const cost = Number(ps.cost || 0);
+    petSittersTotalCost += cost;
+    const dateStr = getLocalDateString(ps.date || ps.startTime || ps.createdAt);
+    const petsFormatted = Array.isArray(ps.petNames) ? ps.petNames.join(', ') : (ps.petNames || ps.petName || 'Pet');
+    return {
+      ...ps,
+      type: 'petsitter',
+      date: dateStr,
+      time: ps.startTime || '',
+      endTime: ps.endTime || '',
+      petNames: petsFormatted,
+      petName: petsFormatted,
+      cost
+    };
+  });
+
   // Lista combinada e unificada em ordem cronológica (data e horário)
-  const detailedItems = [...detailedSessions, ...detailedBaths].sort((a, b) => {
+  const detailedItems = [...detailedSessions, ...detailedBaths, ...detailedPetSitters].sort((a, b) => {
     const dateComp = (a.date || '').localeCompare(b.date || '');
     if (dateComp !== 0) return dateComp;
     return (a.time || '').localeCompare(b.time || '');
@@ -135,7 +160,7 @@ export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [
     }
   });
 
-  const servicesTotalCost = Number((sessionsTotalCost + bathsTotalCost).toFixed(2));
+  const servicesTotalCost = Number((sessionsTotalCost + bathsTotalCost + petSittersTotalCost).toFixed(2));
   const totalToPay = Math.max(0, Number((servicesTotalCost + adjustmentsTotalCost).toFixed(2)));
 
   const [year, month] = monthYearKey.split('-');
@@ -154,12 +179,16 @@ export function calculateMonthlyInvoice(tutor, groups, sessions, adjustments = [
     totalBaths: detailedBaths.length,
     bathsCount: detailedBaths.length,
     bathsTotalCost: Number(bathsTotalCost.toFixed(2)),
+    totalPetSitters: detailedPetSitters.length,
+    petSittersCount: detailedPetSitters.length,
+    petSittersTotalCost: Number(petSittersTotalCost.toFixed(2)),
     servicesTotalCost,
     adjustments: tutorAdjustments,
     adjustmentsTotalCost: Number(adjustmentsTotalCost.toFixed(2)),
     totalToPay,
     detailedSessions,
     detailedBaths,
+    detailedPetSitters,
     detailedItems,
     pixKey
   };
@@ -183,7 +212,7 @@ export function formatWhatsAppPhone(rawPhone) {
 }
 
 /**
- * Formata mensagem limpa para envio via WhatsApp com suporte a passeios e banhos
+ * Formata mensagem limpa para envio via WhatsApp com suporte a passeios, banhos e pet sitter
  * @param {Object} invoice 
  * @returns {string}
  */
@@ -198,6 +227,9 @@ export function formatWhatsAppSummary(invoice) {
   if (invoice.bathsCount > 0) {
     lines.push(`🛁 *Total de Banhos realizados:* ${invoice.bathsCount} (R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')})`);
   }
+  if (invoice.petSittersCount > 0) {
+    lines.push(`🏠 *Total de Pet Sitter realizados:* ${invoice.petSittersCount} (R$ ${invoice.petSittersTotalCost.toFixed(2).replace('.', ',')})`);
+  }
 
   // Detalhamento cronológico unificado
   if (invoice.detailedItems && invoice.detailedItems.length > 0) {
@@ -211,6 +243,9 @@ export function formatWhatsAppSummary(invoice) {
       } else if (item.type === 'bath') {
         const timeStr = item.time ? ` (${item.time}${item.endTime ? ` às ${item.endTime}` : ''})` : '';
         lines.push(` • ${formattedDate} - 🛁 Banho ${item.petName}${timeStr}: R$ ${item.cost.toFixed(2).replace('.', ',')}`);
+      } else if (item.type === 'petsitter') {
+        const timeStr = item.time ? ` (${item.time}${item.endTime ? ` às ${item.endTime}` : ''})` : '';
+        lines.push(` • ${formattedDate} - 🏠 Pet Sitter ${item.petNames || item.petName}${timeStr}: R$ ${item.cost.toFixed(2).replace('.', ',')}`);
       }
     });
   }
@@ -254,12 +289,22 @@ export function formatEmailHtml(invoice, customNote = '') {
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R$ ${(item.cost || 0).toFixed(2).replace('.', ',')}</td>
         </tr>
       `;
-    } else {
+    } else if (item.type === 'bath') {
       const timeStr = item.time ? `${item.time}${item.endTime ? ` - ${item.endTime}` : ''}` : 'Banho';
       return `
         <tr>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${formattedDate}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">🛁 Banho (${item.petName || 'Pet'})</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${timeStr}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R$ ${(item.cost || 0).toFixed(2).replace('.', ',')}</td>
+        </tr>
+      `;
+    } else if (item.type === 'petsitter') {
+      const timeStr = item.time ? `${item.time}${item.endTime ? ` - ${item.endTime}` : ''}` : 'Pet Sitter';
+      return `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${formattedDate}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">🏠 Pet Sitter (${item.petNames || item.petName || 'Pet'})</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee;">${timeStr}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R$ ${(item.cost || 0).toFixed(2).replace('.', ',')}</td>
         </tr>
@@ -286,17 +331,17 @@ export function formatEmailHtml(invoice, customNote = '') {
     </div>
   ` : '';
 
-  let subtotalsHtml = '';
-  if (invoice.sessionsCount > 0 && invoice.bathsCount > 0) {
-    subtotalsHtml = `
-      <div style="font-size: 13px; color: #666;">Passeios (${invoice.sessionsCount}): R$ ${invoice.sessionsTotalCost.toFixed(2).replace('.', ',')}</div>
-      <div style="font-size: 13px; color: #666; margin-top: 2px;">Banhos (${invoice.bathsCount}): R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')}</div>
-    `;
-  } else if (invoice.sessionsCount > 0) {
-    subtotalsHtml = `<div style="font-size: 13px; color: #666;">Subtotal dos Passeios (${invoice.sessionsCount}): R$ ${invoice.sessionsTotalCost.toFixed(2).replace('.', ',')}</div>`;
-  } else if (invoice.bathsCount > 0) {
-    subtotalsHtml = `<div style="font-size: 13px; color: #666;">Subtotal dos Banhos (${invoice.bathsCount}): R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')}</div>`;
+  const subtotalLines = [];
+  if (invoice.sessionsCount > 0) {
+    subtotalLines.push(`<div style="font-size: 13px; color: #666;">Passeios (${invoice.sessionsCount}): R$ ${invoice.sessionsTotalCost.toFixed(2).replace('.', ',')}</div>`);
   }
+  if (invoice.bathsCount > 0) {
+    subtotalLines.push(`<div style="font-size: 13px; color: #666; margin-top: 2px;">Banhos (${invoice.bathsCount}): R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')}</div>`);
+  }
+  if (invoice.petSittersCount > 0) {
+    subtotalLines.push(`<div style="font-size: 13px; color: #666; margin-top: 2px;">Pet Sitter (${invoice.petSittersCount}): R$ ${invoice.petSittersTotalCost.toFixed(2).replace('.', ',')}</div>`);
+  }
+  const subtotalsHtml = subtotalLines.join('');
 
   return `<!DOCTYPE html>
 <html>

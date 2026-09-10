@@ -1,8 +1,8 @@
-import { StorageService } from './services/storage.js?v=38';
-import { PushService } from './services/pushService.js?v=38';
-import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=38';
-import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=38';
-import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=38';
+import { StorageService } from './services/storage.js?v=39';
+import { PushService } from './services/pushService.js?v=39';
+import { hashPin, verifyPin, isBiometricsAvailable, registerBiometrics, authenticateBiometrics } from './services/security.js?v=39';
+import { syncBackupToGoogle, sendInvoiceEmailViaGoogle, pullBackupFromGoogle, listBackupsFromGoogle } from './services/googleSync.js?v=39';
+import { calculateSessionCost, calculateMonthlyInvoice, formatWhatsAppSummary, formatEmailHtml, formatWhatsAppPhone, getLocalDateString, getLocalDateMonth } from './domain/models.js?v=39';
 
 // Fallback defensivo caso o navegador tenha mantido cópia antiga de storage.js em memória
 if (typeof StorageService !== 'undefined') {
@@ -55,12 +55,63 @@ if (typeof StorageService !== 'undefined') {
       });
     };
   }
+  if (!StorageService.savePetSitter) {
+    StorageService.savePetSitter = (sitter) => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('petSitters')) return resolve(sitter);
+          const tx = db.transaction('petSitters', 'readwrite');
+          const store = tx.objectStore('petSitters');
+          store.put(sitter);
+          tx.oncomplete = () => resolve(sitter);
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
+  if (!StorageService.getPetSitters) {
+    StorageService.getPetSitters = () => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('petSitters')) return resolve([]);
+          const tx = db.transaction('petSitters', 'readonly');
+          const store = tx.objectStore('petSitters');
+          const getReq = store.getAll();
+          getReq.onsuccess = () => resolve(getReq.result || []);
+          getReq.onerror = () => reject(getReq.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
+  if (!StorageService.deletePetSitter) {
+    StorageService.deletePetSitter = (id) => {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('petwalker_db', 3);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('petSitters')) return resolve();
+          const tx = db.transaction('petSitters', 'readwrite');
+          const store = tx.objectStore('petSitters');
+          store.delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    };
+  }
 }
 
 export const APP_CONFIG = {
-  version: '2.9.4',
-  build: '2026.09.07',
-  cacheVersion: 'v38'
+  version: '2.9.5',
+  build: '2026.09.10',
+  cacheVersion: 'v39'
 };
 
 function renderAppVersionInfo() {
@@ -77,6 +128,7 @@ const state = {
   pets: [],
   sessions: [],
   baths: [],
+  petSitters: [],
   adjustments: [],
   settings: {},
   activeSession: null,
@@ -94,11 +146,13 @@ async function initApp() {
     setupWalkController();
     setupDailyView();
     setupBathsView();
+    setupSittersView();
     setupTutorManager();
     setupInvoiceManager();
     setupSettingsController();
     setupManualWalkModal();
     setupBathModal();
+    setupPetSitterModal();
     setupEmailPreviewModal();
     setupPhotoViewerModal();
     setupOnlineOfflineStatus();
@@ -156,6 +210,7 @@ async function loadAppData() {
     state.pets = (await StorageService.getPets()) || [];
     state.sessions = (await StorageService.getSessions()) || [];
     state.baths = (await StorageService.getBaths()) || [];
+    state.petSitters = (await StorageService.getPetSitters()) || [];
     state.adjustments = (await StorageService.getAdjustments()) || [];
   } catch (err) {
     console.error('Erro ao ler coleções do IndexedDB:', err);
@@ -200,6 +255,7 @@ async function loadAppData() {
   try { updateGroupDropdown(); } catch (e) { console.warn('Erro ao atualizar dropdown de grupos:', e); }
   try { renderDailyView(); } catch (e) { console.warn('Erro ao renderizar diário de passeios:', e); }
   try { renderDailyBaths(); } catch (e) { console.warn('Erro ao renderizar diário de banhos:', e); }
+  try { renderDailySitters(); } catch (e) { console.warn('Erro ao renderizar diário de pet sitter:', e); }
   try { renderTutorsList(); } catch (e) { console.warn('Erro ao renderizar lista de tutores:', e); }
   try { updateInvoiceTutorDropdown(); } catch (e) { console.warn('Erro ao atualizar dropdown de faturas:', e); }
   try { updateSyncStatusBadge(); } catch (e) { console.warn('Erro ao atualizar status de sync:', e); }
@@ -450,6 +506,7 @@ function setupNavigation() {
       try {
         if (targetId === 'view-daily') renderDailyView();
         else if (targetId === 'view-baths') renderDailyBaths();
+        else if (targetId === 'view-sitter') renderDailySitters();
         else if (targetId === 'view-tutors') renderTutorsList();
         else if (targetId === 'view-invoice') renderInvoiceView();
         else if (targetId === 'view-settings') renderSettingsView();
@@ -458,6 +515,22 @@ function setupNavigation() {
       }
     });
   });
+
+  const btnHeaderSettings = document.getElementById('btn-header-settings');
+  if (btnHeaderSettings) {
+    btnHeaderSettings.addEventListener('click', () => {
+      navItems.forEach(n => n.classList.remove('active'));
+      views.forEach(v => v.classList.remove('active'));
+      const settingsView = document.getElementById('view-settings');
+      if (settingsView) settingsView.classList.add('active');
+      state.activeView = 'view-settings';
+      try {
+        renderSettingsView();
+      } catch (err) {
+        console.error('Erro ao alternar para ajustes:', err);
+      }
+    });
+  }
 }
 
 // -------------------------------------------------------------
@@ -2246,6 +2319,293 @@ function setupBathModal() {
   }
 }
 
+// -------------------------------------------------------------
+// CONTROLADOR DA VIEW DE PET SITTER (DIÁRIO DE PET SITTER)
+// -------------------------------------------------------------
+function setupSittersView() {
+  const dateInput = document.getElementById('filter-sitter-date');
+  if (dateInput) {
+    dateInput.value = getLocalDateString();
+    dateInput.addEventListener('change', renderDailySitters);
+  }
+
+  const btnPrev = document.getElementById('btn-sitter-date-prev');
+  const btnToday = document.getElementById('btn-sitter-date-today');
+  const btnNext = document.getElementById('btn-sitter-date-next');
+  const btnOpenModal = document.getElementById('btn-open-sitter-modal');
+  const btnEmptyCta = document.getElementById('btn-sitter-empty-cta');
+
+  function changeSitterDateOffset(days) {
+    if (!dateInput) return;
+    const baseStr = dateInput.value || getLocalDateString();
+    const [y, m, d] = baseStr.split('-').map(Number);
+    const current = new Date(y, m - 1, d);
+    current.setDate(current.getDate() + days);
+    dateInput.value = getLocalDateString(current);
+    renderDailySitters();
+  }
+
+  if (btnPrev) btnPrev.addEventListener('click', () => changeSitterDateOffset(-1));
+  if (btnNext) btnNext.addEventListener('click', () => changeSitterDateOffset(1));
+  if (btnToday) btnToday.addEventListener('click', () => {
+    if (dateInput) {
+      dateInput.value = getLocalDateString();
+      renderDailySitters();
+    }
+  });
+
+  if (btnOpenModal) btnOpenModal.addEventListener('click', () => openPetSitterModal());
+  if (btnEmptyCta) btnEmptyCta.addEventListener('click', () => openPetSitterModal());
+
+  const listEl = document.getElementById('daily-sitters-list');
+  if (listEl) {
+    listEl.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('[data-action="edit-sitter"]');
+      const btnDel = e.target.closest('[data-action="delete-sitter"]');
+
+      if (btnEdit) {
+        const id = btnEdit.dataset.id;
+        const sitter = (state.petSitters || []).find(s => s.id === id);
+        if (sitter) openPetSitterModal(sitter);
+      }
+
+      if (btnDel) {
+        const id = btnDel.dataset.id;
+        if (confirm('Deseja realmente excluir este atendimento de Pet Sitter?')) {
+          await StorageService.deletePetSitter(id);
+          state.petSitters = (state.petSitters || []).filter(s => s.id !== id);
+          renderDailySitters();
+          renderInvoiceView();
+          await markPendingChanges();
+        }
+      }
+    });
+  }
+}
+
+function renderDailySitters() {
+  const dateInput = document.getElementById('filter-sitter-date');
+  const targetDateStr = dateInput && dateInput.value ? dateInput.value : getLocalDateString();
+  const targetMonthStr = targetDateStr.substring(0, 7);
+  const listEl = document.getElementById('daily-sitters-list');
+  const countEl = document.getElementById('stat-sitter-daily-count');
+  const monthCountEl = document.getElementById('stat-sitter-monthly-count');
+  const monthRevEl = document.getElementById('stat-sitter-monthly-revenue');
+  const emptyState = document.getElementById('sitter-empty-state');
+
+  if (!listEl) return;
+
+  const allSitters = state.petSitters || [];
+  const daySitters = allSitters.filter(s => getLocalDateString(s.date || s.startTime || s.createdAt) === targetDateStr);
+  const monthSitters = allSitters.filter(s => getLocalDateMonth(s.date || s.startTime || s.createdAt) === targetMonthStr);
+  const monthRevenue = monthSitters.reduce((acc, s) => acc + (Number(s.cost) || 0), 0);
+
+  const [year, month] = targetMonthStr.split('-');
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const monthLabel = monthNames[parseInt(month, 10) - 1] || month;
+
+  const sitterMonthTitle = document.getElementById('stat-sitter-month-title');
+  if (sitterMonthTitle) sitterMonthTitle.textContent = `No Mês (${monthLabel})`;
+  if (countEl) countEl.textContent = daySitters.length;
+  if (monthCountEl) monthCountEl.textContent = monthSitters.length;
+  if (monthRevEl) monthRevEl.textContent = `R$ ${monthRevenue.toFixed(0)}`;
+
+  if (daySitters.length === 0) {
+    listEl.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
+    return;
+  }
+  if (emptyState) emptyState.style.display = 'none';
+
+  listEl.innerHTML = daySitters.map(s => {
+    const tutor = state.tutors.find(t => t.id === s.tutorId);
+    const tutorName = tutor ? tutor.name : (s.tutorName || 'Tutor');
+    const timeStr = s.startTime ? (s.endTime ? `${s.startTime} às ${s.endTime}` : `${s.startTime}`) : '--:--';
+    const petLabel = Array.isArray(s.petNames) ? s.petNames.join(', ') : (s.petNames || s.petName || 'Pets');
+
+    return `
+      <li class="item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="flex: 1;">
+          <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">
+            🏠 ${petLabel} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">(${tutorName})</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+            🕒 ${timeStr} • <strong style="color: #10B981;">R$ ${Number(s.cost || 0).toFixed(2).replace('.', ',')}</strong>
+          </div>
+          ${s.notes ? `<div style="font-size: 0.8rem; color: var(--text-main); margin-top: 4px; background: rgba(0,0,0,0.03); padding: 4px 8px; border-radius: 4px;">📝 ${s.notes}</div>` : ''}
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn btn-outline btn-sm" data-action="edit-sitter" data-id="${s.id}" title="Editar Atendimento">✏️</button>
+          <button class="btn btn-danger btn-sm" data-action="delete-sitter" data-id="${s.id}" title="Excluir Atendimento">🗑️</button>
+        </div>
+      </li>
+    `;
+  }).join('');
+}
+
+function openPetSitterModal(sitter = null) {
+  const modal = document.getElementById('modal-pet-sitter');
+  const titleEl = document.getElementById('modal-sitter-title');
+  const idInput = document.getElementById('sitter-id');
+  const tutorSelect = document.getElementById('sitter-tutor-select');
+  const petsContainer = document.getElementById('sitter-pets-container');
+  const dateInput = document.getElementById('sitter-date');
+  const startInput = document.getElementById('sitter-start-time');
+  const endInput = document.getElementById('sitter-end-time');
+  const costInput = document.getElementById('sitter-cost');
+  const notesInput = document.getElementById('sitter-notes');
+
+  if (!modal) return;
+
+  if (titleEl) titleEl.textContent = sitter ? '✏️ Editar Pet Sitter' : '🏠 Registrar Pet Sitter';
+  if (idInput) idInput.value = sitter ? sitter.id : '';
+
+  // Popula tutores
+  const sortedTutors = [...state.tutors].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+  tutorSelect.innerHTML = '<option value="">-- Selecione o Tutor --</option>' +
+    sortedTutors.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+  function updateSitterPetOptions(selectedTutorId, preselectedPets = []) {
+    if (!selectedTutorId) {
+      petsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Selecione o tutor primeiro</span>';
+      return;
+    }
+
+    const tGroups = state.groups.filter(g => g.tutorId === selectedTutorId);
+    const tPets = state.pets.filter(p => p.tutorId === selectedTutorId || tGroups.some(g => g.id === p.groupId));
+
+    if (tPets.length === 0) {
+      petsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Nenhum pet cadastrado para este tutor</span>';
+      return;
+    }
+
+    const selSet = new Set(Array.isArray(preselectedPets) ? preselectedPets : [preselectedPets]);
+
+    petsContainer.innerHTML = tPets.map(p => {
+      const isChecked = preselectedPets.length === 0 || selSet.has(p.name);
+      return `
+        <label class="pet-select-chip ${isChecked ? 'selected' : ''}">
+          <input type="checkbox" name="sitter-pets" value="${p.name}" ${isChecked ? 'checked' : ''}>
+          <span>🐾 ${p.name}</span>
+        </label>
+      `;
+    }).join('');
+
+    // Toggle selected class on chip change
+    petsContainer.querySelectorAll('input[name="sitter-pets"]').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const chip = e.target.closest('.pet-select-chip');
+        if (chip) {
+          if (e.target.checked) chip.classList.add('selected');
+          else chip.classList.remove('selected');
+        }
+      });
+    });
+  }
+
+  tutorSelect.onchange = () => {
+    const selectedTutor = state.tutors.find(t => t.id === tutorSelect.value);
+    updateSitterPetOptions(tutorSelect.value);
+    if (selectedTutor && selectedTutor.sitterRate && (!costInput.value || costInput.value === '0' || costInput.value === '0.00')) {
+      costInput.value = Number(selectedTutor.sitterRate).toFixed(2);
+    }
+  };
+
+  const now = new Date();
+  const defaultStartTime = now.toTimeString().substring(0, 5);
+  const laterDate = new Date(now.getTime() + 60 * 60000);
+  const defaultEndTime = laterDate.toTimeString().substring(0, 5);
+
+  if (sitter) {
+    tutorSelect.value = sitter.tutorId || '';
+    const petsArray = Array.isArray(sitter.petNames) ? sitter.petNames : (sitter.petNames ? sitter.petNames.split(',').map(s => s.trim()) : []);
+    updateSitterPetOptions(sitter.tutorId, petsArray);
+    dateInput.value = sitter.date || getLocalDateString();
+    startInput.value = sitter.startTime || defaultStartTime;
+    endInput.value = sitter.endTime || defaultEndTime;
+    costInput.value = sitter.cost !== undefined ? sitter.cost : '';
+    notesInput.value = sitter.notes || '';
+  } else {
+    tutorSelect.value = '';
+    petsContainer.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Selecione o tutor primeiro</span>';
+    dateInput.value = document.getElementById('filter-sitter-date')?.value || getLocalDateString();
+    startInput.value = defaultStartTime;
+    endInput.value = defaultEndTime;
+    costInput.value = '';
+    notesInput.value = '';
+  }
+
+  modal.classList.add('active');
+}
+
+function setupPetSitterModal() {
+  const modal = document.getElementById('modal-pet-sitter');
+  const btnClose = document.getElementById('btn-close-sitter-modal');
+  const btnCloseX = document.getElementById('btn-close-sitter-modal-x');
+  const form = document.getElementById('form-pet-sitter');
+
+  if (btnClose) btnClose.addEventListener('click', () => modal.classList.remove('active'));
+  if (btnCloseX) btnCloseX.addEventListener('click', () => modal.classList.remove('active'));
+
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const id = document.getElementById('sitter-id').value;
+        const tutorId = document.getElementById('sitter-tutor-select').value;
+        const tutor = state.tutors.find(t => t.id === tutorId);
+        
+        // Pega pets selecionados
+        const checkedPets = Array.from(document.querySelectorAll('#sitter-pets-container input[name="sitter-pets"]:checked')).map(cb => cb.value);
+        const petNames = checkedPets.length > 0 ? checkedPets : ['Pet'];
+
+        const date = document.getElementById('sitter-date').value;
+        const startTime = document.getElementById('sitter-start-time').value;
+        const endTime = document.getElementById('sitter-end-time').value;
+        const cost = Number(document.getElementById('sitter-cost').value || 0);
+        const notes = document.getElementById('sitter-notes').value.trim();
+
+        const sitterData = {
+          id: id || `sitter-${Date.now()}`,
+          tutorId,
+          tutorName: tutor ? tutor.name : 'Tutor',
+          petNames,
+          date,
+          startTime,
+          endTime,
+          cost,
+          notes,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (!id) {
+          sitterData.createdAt = new Date().toISOString();
+        }
+
+        await StorageService.savePetSitter(sitterData);
+
+        if (!state.petSitters) state.petSitters = [];
+        if (id) {
+          const idx = state.petSitters.findIndex(s => s.id === id);
+          if (idx !== -1) state.petSitters[idx] = sitterData;
+          else state.petSitters.push(sitterData);
+        } else {
+          state.petSitters.push(sitterData);
+        }
+
+        modal.classList.remove('active');
+        renderDailySitters();
+        renderInvoiceView();
+        await markPendingChanges();
+        alert('✅ Atendimento de Pet Sitter salvo com sucesso!');
+      } catch (err) {
+        console.error('Erro ao salvar pet sitter:', err);
+        alert(`Erro ao salvar pet sitter: ${err.message}`);
+      }
+    });
+  }
+}
+
 function renderTutorPetRows(pets = []) {
   const container = document.getElementById('tutor-pets-container');
   if (!container) return;
@@ -2317,6 +2677,8 @@ function setupTutorManager() {
       form.reset();
       document.getElementById('tutor-id').value = '';
       document.getElementById('tutor-group-id').value = '';
+      const sitterRateEl = document.getElementById('tutor-sitter-rate');
+      if (sitterRateEl) sitterRateEl.value = '';
       renderTutorPetRows([{ id: '', name: '', bathRate: '' }]);
       if (modalTitle) modalTitle.textContent = '🐾 Cadastrar Novo Tutor';
       modal.classList.add('active');
@@ -2375,6 +2737,10 @@ function setupTutorManager() {
         document.getElementById('tutor-name').value = tutor.name || '';
         document.getElementById('tutor-phone').value = tutor.phone || '';
         document.getElementById('tutor-email').value = tutor.email || '';
+        const sitterRateEl = document.getElementById('tutor-sitter-rate');
+        if (sitterRateEl) {
+          sitterRateEl.value = tutor.sitterRate !== undefined && tutor.sitterRate !== null ? tutor.sitterRate : '';
+        }
 
         document.getElementById('group-name').value = group ? group.name : '';
         document.getElementById('group-rate-30').value = group && group.rate30min ? group.rate30min : '';
@@ -2438,6 +2804,8 @@ function setupTutorManager() {
         const rate60Input = document.getElementById('group-rate-60').value;
         const rate30 = rate30Input !== '' && !isNaN(rate30Input) ? Number(rate30Input) : 0;
         const rate60 = rate60Input !== '' && !isNaN(rate60Input) ? Number(rate60Input) : 0;
+        const sitterRateInput = document.getElementById('tutor-sitter-rate')?.value;
+        const sitterRate = sitterRateInput !== '' && !isNaN(sitterRateInput) ? Number(sitterRateInput) : null;
 
         let activeTutorId = tutorId;
         let activeGroupId = groupId;
@@ -2449,6 +2817,7 @@ function setupTutorManager() {
             existingTutor.name = tutorName;
             existingTutor.phone = tutorPhone;
             existingTutor.email = tutorEmail;
+            existingTutor.sitterRate = sitterRate;
             await StorageService.saveTutor(existingTutor);
           }
 
@@ -2478,7 +2847,8 @@ function setupTutorManager() {
             id: `tut-${Date.now()}`,
             name: tutorName,
             phone: tutorPhone,
-            email: tutorEmail
+            email: tutorEmail,
+            sitterRate
           };
           activeTutorId = newTutor.id;
 
@@ -2651,6 +3021,13 @@ function renderTutorsList() {
           </div>
 
         </div>
+
+        ${t.sitterRate ? `
+          <div style="margin-bottom: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 0.78rem; color: #047857; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+            <span>🏠 Tarifa Pet Sitter:</span>
+            <strong>R$ ${Number(t.sitterRate).toFixed(2).replace('.', ',')} / visita</strong>
+          </div>
+        ` : ''}
 
         <!-- Ações do Tutor na Base -->
         <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding-top: 10px; border-top: 1px solid var(--border);">
@@ -2853,7 +3230,8 @@ function getCalculatedInvoice() {
     state.adjustments,
     monthPicker.value,
     state.settings.pixKey,
-    state.baths || []
+    state.baths || [],
+    state.petSitters || []
   );
 }
 
@@ -2872,20 +3250,26 @@ function renderMonthSummaryCards() {
     return getLocalDateMonth(b.date || b.startTime || b.createdAt) === monthStr;
   });
 
-  // 3. Filtrar ajustes do mês selecionado
+  // 3. Filtrar pet sitters do mês selecionado
+  const monthSitters = (state.petSitters || []).filter(s => {
+    return getLocalDateMonth(s.date || s.startTime || s.createdAt) === monthStr;
+  });
+
+  // 4. Filtrar ajustes do mês selecionado
   const monthAdjustments = state.adjustments.filter(a => {
     if (!a.date) return false;
     return getLocalDateMonth(a.date) === monthStr;
   });
 
-  // Cálculo de faturamento total do mês (passeios + banhos + ajustes)
+  // Cálculo de faturamento total do mês (passeios + banhos + pet sitter + ajustes)
   const sessionsTotal = monthSessions.reduce((acc, s) => acc + (Number(s.cost) || 0), 0);
   const bathsTotal = monthBaths.reduce((acc, b) => acc + (Number(b.cost) || 0), 0);
+  const sittersTotal = monthSitters.reduce((acc, s) => acc + (Number(s.cost) || 0), 0);
   const adjustmentsTotal = monthAdjustments.reduce((acc, a) => {
     const amt = Number(a.amount) || 0;
     return a.type === 'credit' ? acc - amt : acc + amt;
   }, 0);
-  const totalRevenue = Math.max(0, sessionsTotal + bathsTotal + adjustmentsTotal);
+  const totalRevenue = Math.max(0, sessionsTotal + bathsTotal + sittersTotal + adjustmentsTotal);
 
   // Cálculo de tempo total
   const totalMinutes = monthSessions.reduce((acc, s) => {
@@ -2926,6 +3310,10 @@ function renderMonthSummaryCards() {
     if (b.petName) uniqueBathPets.add(b.petName);
   });
 
+  monthSitters.forEach(s => {
+    if (s.tutorId) uniqueTutors.add(s.tutorId);
+  });
+
   // Atualizar elementos DOM dos cards
   const revEl = document.getElementById('metric-month-revenue');
   const revSub = document.getElementById('metric-month-revenue-sub');
@@ -2933,6 +3321,8 @@ function renderMonthSummaryCards() {
   const walksSub = document.getElementById('metric-month-walks-sub');
   const bathsRevEl = document.getElementById('metric-month-baths-revenue');
   const bathsSub = document.getElementById('metric-month-baths-sub');
+  const sittersRevEl = document.getElementById('metric-month-sitters-revenue');
+  const sittersSub = document.getElementById('metric-month-sitters-sub');
   const timeEl = document.getElementById('metric-month-time');
   const kmSub = document.getElementById('metric-month-km-sub');
 
@@ -2952,6 +3342,11 @@ function renderMonthSummaryCards() {
   if (bathsSub) {
     const bathPetCount = uniqueBathPets.size;
     bathsSub.textContent = `${monthBaths.length} ${monthBaths.length === 1 ? 'banho' : 'banhos'}${bathPetCount > 0 ? ` • ${bathPetCount} ${bathPetCount === 1 ? 'pet' : 'pets'}` : ''}`;
+  }
+
+  if (sittersRevEl) sittersRevEl.textContent = `R$ ${sittersTotal.toFixed(2).replace('.', ',')}`;
+  if (sittersSub) {
+    sittersSub.textContent = `${monthSitters.length} ${monthSitters.length === 1 ? 'visita realizada' : 'visitas realizadas'}`;
   }
 
   if (timeEl) timeEl.textContent = timeFormatted;
@@ -2993,6 +3388,13 @@ function renderInvoiceView() {
   if (bathCountEl) bathCountEl.textContent = invoice.bathsCount;
   if (bathCostEl) bathCostEl.textContent = `R$ ${invoice.bathsTotalCost.toFixed(2).replace('.', ',')}`;
   if (bathsRow) bathsRow.style.display = invoice.bathsCount > 0 ? 'flex' : 'none';
+
+  const sittersRow = document.getElementById('inv-sitters-row');
+  const sitterCountEl = document.getElementById('inv-sitter-count');
+  const sitterCostEl = document.getElementById('inv-sitter-cost');
+  if (sitterCountEl) sitterCountEl.textContent = invoice.petSittersCount || 0;
+  if (sitterCostEl) sitterCostEl.textContent = `R$ ${(invoice.petSittersTotalCost || 0).toFixed(2).replace('.', ',')}`;
+  if (sittersRow) sittersRow.style.display = (invoice.petSittersCount > 0) ? 'flex' : 'none';
 
   const adjCostEl = document.getElementById('inv-adjustments-cost');
   if (adjCostEl) adjCostEl.textContent = `R$ ${invoice.adjustmentsTotalCost.toFixed(2).replace('.', ',')}`;
@@ -3374,6 +3776,7 @@ function setupSettingsController() {
           pets: state.pets,
           sessions: state.sessions,
           baths: state.baths || [],
+          petSitters: state.petSitters || [],
           adjustments: state.adjustments
         };
         const res = await syncBackupToGoogle(state.settings.googleScriptUrl, payload);
@@ -3421,6 +3824,7 @@ function setupSettingsController() {
         pets: state.pets,
         sessions: state.sessions,
         baths: state.baths || [],
+        petSitters: state.petSitters || [],
         adjustments: state.adjustments
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -3516,7 +3920,7 @@ async function openRestoreBackupModal() {
           const pullRes = await pullBackupFromGoogle(state.settings.googleScriptUrl, fileName);
 
           if (pullRes.payload) {
-            const { tutors, groups, pets, sessions, baths, adjustments } = pullRes.payload;
+            const { tutors, groups, pets, sessions, baths, petSitters, adjustments } = pullRes.payload;
             if (tutors) {
               for (const item of tutors) await StorageService.saveTutor(item);
             }
@@ -3531,6 +3935,9 @@ async function openRestoreBackupModal() {
             }
             if (baths) {
               for (const item of baths) await StorageService.saveBath(item);
+            }
+            if (petSitters) {
+              for (const item of petSitters) await StorageService.savePetSitter(item);
             }
             if (adjustments) {
               for (const item of adjustments) await StorageService.saveAdjustment(item);
