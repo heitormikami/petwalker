@@ -109,9 +109,9 @@ if (typeof StorageService !== 'undefined') {
 }
 
 export const APP_CONFIG = {
-  version: '2.9.5',
+  version: '2.9.6',
   build: '2026.09.10',
-  cacheVersion: 'v39'
+  cacheVersion: 'v40'
 };
 
 function renderAppVersionInfo() {
@@ -2657,7 +2657,7 @@ function renderTutorPetRows(pets = []) {
 
   container.innerHTML = pets.map(p => `
     <div class="pet-form-row" data-pet-id="${p.id || ''}">
-      <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" value="${p.name || ''}" required>
+      <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" value="${p.name || ''}">
       <input type="number" step="0.01" inputmode="decimal" class="form-input pet-bath-rate-input" placeholder="Banho R$" value="${p.bathRate !== undefined && p.bathRate !== null ? p.bathRate : ''}" style="text-align: right;">
       <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
     </div>
@@ -2684,7 +2684,7 @@ function setupTutorManager() {
       row.className = 'pet-form-row';
       row.dataset.petId = '';
       row.innerHTML = `
-        <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet" required>
+        <input type="text" class="form-input pet-name-input" placeholder="Nome do Pet">
         <input type="number" step="0.01" inputmode="decimal" class="form-input pet-bath-rate-input" placeholder="Banho R$" style="text-align: right;">
         <button type="button" class="btn-remove-pet" title="Remover Pet">✕</button>
       `;
@@ -2700,15 +2700,7 @@ function setupTutorManager() {
       if (btnRem) {
         const row = btnRem.closest('.pet-form-row');
         if (row) {
-          const allRows = petsContainer.querySelectorAll('.pet-form-row');
-          if (allRows.length > 1) {
-            row.remove();
-          } else {
-            const nameInput = row.querySelector('.pet-name-input');
-            const rateInput = row.querySelector('.pet-bath-rate-input');
-            if (nameInput) nameInput.value = '';
-            if (rateInput) rateInput.value = '';
-          }
+          row.remove();
         }
       }
     };
@@ -2788,7 +2780,7 @@ function setupTutorManager() {
         document.getElementById('group-rate-30').value = group && group.rate30min ? group.rate30min : '';
         document.getElementById('group-rate-60').value = group && group.rate60min ? group.rate60min : '';
 
-        renderTutorPetRows(tPets.length > 0 ? tPets : [{ id: '', name: group ? group.name : '', bathRate: '' }]);
+        renderTutorPetRows(tPets.length > 0 ? tPets : [{ id: '', name: '', bathRate: '' }]);
 
         if (modalTitle) modalTitle.textContent = '✏️ Editar Tutor & Pets';
         modal.classList.add('active');

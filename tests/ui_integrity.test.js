@@ -76,3 +76,11 @@ test('UI Integrity - Campos de Quilometragem em banhos/sitters e label simplific
   assert.ok(!htmlContent.includes('(Opcional / Se for de Carro)'), 'Não deve mais conter o label longo (Opcional / Se for de Carro)');
   assert.ok(htmlContent.includes('🚗 Quilometragem'), 'Deve conter o label limpo 🚗 Quilometragem');
 });
+
+test('UI Integrity - Modal do Tutor não exige Pet para banho obrigatoriamente', () => {
+  const appJsContent = fs.readFileSync(path.resolve('src/app.js'), 'utf-8');
+  assert.ok(htmlContent.includes('🐾 Pets &amp; Valor Padrão do Banho (Opcional)'), 'Título de pets no modal deve indicar (Opcional)');
+  assert.ok(!appJsContent.includes('class="form-input pet-name-input" placeholder="Nome do Pet" value="${p.name || \'\'}" required'), 'pet-name-input não deve ter required');
+  assert.ok(!appJsContent.includes('class="form-input pet-name-input" placeholder="Nome do Pet" required'), 'pet-name-input dinâmico não deve ter required');
+});
+
