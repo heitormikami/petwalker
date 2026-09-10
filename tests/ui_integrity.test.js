@@ -69,3 +69,10 @@ test('UI Integrity - Tela de Bloqueio possui ícone oficial e indicador de vers�
   assert.ok(htmlContent.includes('src="assets/favicon.svg"'), 'Tela de bloqueio deve usar ícone oficial');
   assert.ok(htmlContent.includes('id="lock-app-version"'), 'Tela de bloqueio deve conter elemento de versão');
 });
+
+test('UI Integrity - Campos de Quilometragem em banhos/sitters e label simplificado no passeio', () => {
+  assert.ok(htmlContent.includes('id="bath-km-start"') && htmlContent.includes('id="bath-km-end"'), 'Modal de banho deve conter bath-km-start e bath-km-end');
+  assert.ok(htmlContent.includes('id="sitter-km-start"') && htmlContent.includes('id="sitter-km-end"'), 'Modal de pet sitter deve conter sitter-km-start e sitter-km-end');
+  assert.ok(!htmlContent.includes('(Opcional / Se for de Carro)'), 'Não deve mais conter o label longo (Opcional / Se for de Carro)');
+  assert.ok(htmlContent.includes('🚗 Quilometragem'), 'Deve conter o label limpo 🚗 Quilometragem');
+});

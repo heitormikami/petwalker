@@ -2145,6 +2145,11 @@ function renderDailyBaths() {
     const tutorName = tutor ? tutor.name : 'Tutor';
     const timeStr = b.startTime ? (b.endTime ? `${b.startTime} às ${b.endTime}` : `${b.startTime}`) : '--:--';
 
+    const hasKm = (b.kmStart !== null && b.kmStart !== undefined) || (b.kmEnd !== null && b.kmEnd !== undefined);
+    const kmBadge = hasKm
+      ? `<div style="margin-top: 4px;"><span class="km-badge">🚗 Km: ${b.kmStart ?? '-'} → ${b.kmEnd ?? '-'} ${b.kmTotal ? `(${b.kmTotal} km)` : ''}</span></div>`
+      : '';
+
     return `
       <li class="item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
         <div style="flex: 1;">
@@ -2154,6 +2159,7 @@ function renderDailyBaths() {
           <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
             🕒 ${timeStr} • <strong style="color: var(--primary);">R$ ${Number(b.cost || 0).toFixed(2).replace('.', ',')}</strong>
           </div>
+          ${kmBadge}
           ${b.notes ? `<div style="font-size: 0.8rem; color: var(--text-main); margin-top: 4px; background: rgba(0,0,0,0.03); padding: 4px 8px; border-radius: 4px;">📝 ${b.notes}</div>` : ''}
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
@@ -2175,6 +2181,8 @@ function openBathModal(bath = null) {
   const startInput = document.getElementById('bath-start-time');
   const endInput = document.getElementById('bath-end-time');
   const costInput = document.getElementById('bath-cost');
+  const kmStartInput = document.getElementById('bath-km-start');
+  const kmEndInput = document.getElementById('bath-km-end');
   const notesInput = document.getElementById('bath-notes');
 
   if (!modal) return;
@@ -2240,6 +2248,8 @@ function openBathModal(bath = null) {
     startInput.value = bath.startTime || defaultStartTime;
     endInput.value = bath.endTime || defaultEndTime;
     costInput.value = bath.cost !== undefined ? bath.cost : '';
+    if (kmStartInput) kmStartInput.value = (bath.kmStart !== null && bath.kmStart !== undefined) ? bath.kmStart : '';
+    if (kmEndInput) kmEndInput.value = (bath.kmEnd !== null && bath.kmEnd !== undefined) ? bath.kmEnd : '';
     notesInput.value = bath.notes || '';
   } else {
     tutorSelect.value = '';
@@ -2249,6 +2259,8 @@ function openBathModal(bath = null) {
     startInput.value = defaultStartTime;
     endInput.value = defaultEndTime;
     costInput.value = '';
+    if (kmStartInput) kmStartInput.value = '';
+    if (kmEndInput) kmEndInput.value = '';
     notesInput.value = '';
   }
 
@@ -2278,6 +2290,11 @@ function setupBathModal() {
         const startTime = document.getElementById('bath-start-time').value;
         const endTime = document.getElementById('bath-end-time').value;
         const cost = Number(document.getElementById('bath-cost').value || 0);
+        const kmStartVal = document.getElementById('bath-km-start')?.value.trim();
+        const kmEndVal = document.getElementById('bath-km-end')?.value.trim();
+        const kmStart = kmStartVal !== '' && !isNaN(kmStartVal) ? Number(kmStartVal) : null;
+        const kmEnd = kmEndVal !== '' && !isNaN(kmEndVal) ? Number(kmEndVal) : null;
+        const kmTotal = kmStart !== null && kmEnd !== null && kmEnd >= kmStart ? Number((kmEnd - kmStart).toFixed(1)) : null;
         const notes = document.getElementById('bath-notes').value.trim();
 
         const bathData = {
@@ -2289,6 +2306,9 @@ function setupBathModal() {
           startTime,
           endTime,
           cost,
+          kmStart,
+          kmEnd,
+          kmTotal,
           notes,
           updatedAt: new Date().toISOString()
         };
@@ -2425,6 +2445,11 @@ function renderDailySitters() {
     const timeStr = s.startTime ? (s.endTime ? `${s.startTime} às ${s.endTime}` : `${s.startTime}`) : '--:--';
     const petLabel = Array.isArray(s.petNames) ? s.petNames.join(', ') : (s.petNames || s.petName || 'Pets');
 
+    const hasKm = (s.kmStart !== null && s.kmStart !== undefined) || (s.kmEnd !== null && s.kmEnd !== undefined);
+    const kmBadge = hasKm
+      ? `<div style="margin-top: 4px;"><span class="km-badge">🚗 Km: ${s.kmStart ?? '-'} → ${s.kmEnd ?? '-'} ${s.kmTotal ? `(${s.kmTotal} km)` : ''}</span></div>`
+      : '';
+
     return `
       <li class="item-row" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
         <div style="flex: 1;">
@@ -2434,6 +2459,7 @@ function renderDailySitters() {
           <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
             🕒 ${timeStr} • <strong style="color: #10B981;">R$ ${Number(s.cost || 0).toFixed(2).replace('.', ',')}</strong>
           </div>
+          ${kmBadge}
           ${s.notes ? `<div style="font-size: 0.8rem; color: var(--text-main); margin-top: 4px; background: rgba(0,0,0,0.03); padding: 4px 8px; border-radius: 4px;">📝 ${s.notes}</div>` : ''}
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
@@ -2455,6 +2481,8 @@ function openPetSitterModal(sitter = null) {
   const startInput = document.getElementById('sitter-start-time');
   const endInput = document.getElementById('sitter-end-time');
   const costInput = document.getElementById('sitter-cost');
+  const kmStartInput = document.getElementById('sitter-km-start');
+  const kmEndInput = document.getElementById('sitter-km-end');
   const notesInput = document.getElementById('sitter-notes');
 
   if (!modal) return;
@@ -2526,6 +2554,8 @@ function openPetSitterModal(sitter = null) {
     startInput.value = sitter.startTime || defaultStartTime;
     endInput.value = sitter.endTime || defaultEndTime;
     costInput.value = sitter.cost !== undefined ? sitter.cost : '';
+    if (kmStartInput) kmStartInput.value = (sitter.kmStart !== null && sitter.kmStart !== undefined) ? sitter.kmStart : '';
+    if (kmEndInput) kmEndInput.value = (sitter.kmEnd !== null && sitter.kmEnd !== undefined) ? sitter.kmEnd : '';
     notesInput.value = sitter.notes || '';
   } else {
     tutorSelect.value = '';
@@ -2534,6 +2564,8 @@ function openPetSitterModal(sitter = null) {
     startInput.value = defaultStartTime;
     endInput.value = defaultEndTime;
     costInput.value = '';
+    if (kmStartInput) kmStartInput.value = '';
+    if (kmEndInput) kmEndInput.value = '';
     notesInput.value = '';
   }
 
@@ -2565,6 +2597,11 @@ function setupPetSitterModal() {
         const startTime = document.getElementById('sitter-start-time').value;
         const endTime = document.getElementById('sitter-end-time').value;
         const cost = Number(document.getElementById('sitter-cost').value || 0);
+        const kmStartVal = document.getElementById('sitter-km-start')?.value.trim();
+        const kmEndVal = document.getElementById('sitter-km-end')?.value.trim();
+        const kmStart = kmStartVal !== '' && !isNaN(kmStartVal) ? Number(kmStartVal) : null;
+        const kmEnd = kmEndVal !== '' && !isNaN(kmEndVal) ? Number(kmEndVal) : null;
+        const kmTotal = kmStart !== null && kmEnd !== null && kmEnd >= kmStart ? Number((kmEnd - kmStart).toFixed(1)) : null;
         const notes = document.getElementById('sitter-notes').value.trim();
 
         const sitterData = {
@@ -2576,6 +2613,9 @@ function setupPetSitterModal() {
           startTime,
           endTime,
           cost,
+          kmStart,
+          kmEnd,
+          kmTotal,
           notes,
           updatedAt: new Date().toISOString()
         };
@@ -3308,11 +3348,19 @@ function renderMonthSummaryCards() {
   });
 
   monthBaths.forEach(b => {
+    if (b.kmTotal && !isNaN(b.kmTotal) && Number(b.kmTotal) > 0) {
+      totalKm += Number(b.kmTotal);
+      kmSessionCount++;
+    }
     if (b.tutorId) uniqueTutors.add(b.tutorId);
     if (b.petName) uniqueBathPets.add(b.petName);
   });
 
   monthSitters.forEach(s => {
+    if (s.kmTotal && !isNaN(s.kmTotal) && Number(s.kmTotal) > 0) {
+      totalKm += Number(s.kmTotal);
+      kmSessionCount++;
+    }
     if (s.tutorId) uniqueTutors.add(s.tutorId);
   });
 

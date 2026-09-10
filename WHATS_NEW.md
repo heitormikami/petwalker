@@ -28,8 +28,12 @@ Bem-vinda à nova versão do **Petwalker (v2.9.5 / Cache v39)**! Esta atualizaç
 - **Modal Dinâmico de Lançamento (`+ Registrar Pet Sitter`)**:
   - **Seleção de Tutor**: Carrega automaticamente a lista de tutores ativos.
   - **Seleção Multi-Pets Dinâmica**: Chips táteis interativos que permitem selecionar um ou múltiplos pets daquele tutor para a visita.
-  - **Campos Operacionais**: Data, Horário de Início, Horário de Término, Valor (R$) e Observações de Bem-Estar.
+  - **Campos Operacionais**: Data, Horário de Início, Horário de Término, Valor (R$), **Quilometragem Opcional** (Km Inicial e Final) e Observações de Bem-Estar.
   - **Valor Padrão no Tutor**: Novo campo no perfil do tutor para taxa padrão de pet sitter, autopreenchendo o valor no modal de forma editável.
+
+- **Quilometragem Integrada & Labels Limpos**:
+  - Campos opcionais de **Km Inicial e Km Final** adicionados tanto no modal de **Pet Sitter** quanto no de **Banhos**, totalizando automaticamente o odômetro mensal e exibindo o badge `🚗 Km` nos registros diários.
+  - Label de quilometragem simplificado para `🚗 Quilometragem` nas telas de passeio ativo e lançamento manual.
 
 ---
 
