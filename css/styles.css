@@ -128,12 +128,16 @@ h1, h2, h3, h4, .brand-title {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0; /* permite encolher em telas estreitas */
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .brand-logo svg {
   width: 32px;
   height: 32px;
   color: var(--primary);
+  flex-shrink: 0;
 }
 
 .brand-name {
@@ -142,12 +146,16 @@ h1, h2, h3, h4, .brand-title {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .brand-subtitle {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* View Container */
@@ -480,6 +488,7 @@ input[type="date"]::-webkit-date-and-time-value {
   font-size: 0.9rem;
   font-weight: 500;
   user-select: none;
+  min-height: 44px; /* Apple HIG: mínimo 44px de toque */
 }
 
 .note-toggle input {
@@ -576,37 +585,13 @@ input[type="date"]::-webkit-date-and-time-value {
   to { width: 18px; opacity: 1; }
 }
 
-/* Dynamic Pet Form Row */
+/* Dynamic Pet Form Row — visual container (layout handled by flex rule below) */
 .pet-form-row {
-  display: grid;
-  grid-template-columns: 1fr 110px 36px;
-  gap: 8px;
-  align-items: center;
   background: var(--bg-cream);
   border: 1px solid var(--border);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   transition: var(--transition);
-}
-
-.pet-form-row .btn-remove-pet {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  border-radius: var(--radius-sm);
-  background: var(--danger-bg);
-  color: var(--danger);
-  border: none;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.pet-form-row .btn-remove-pet:hover {
-  filter: brightness(0.9);
 }
 
 /* Lock Screen Modal */
@@ -917,13 +902,13 @@ input[type="date"]::-webkit-date-and-time-value {
   line-height: 1.5;
 }
 
-/* Modal close X button */
+/* Modal close X button — 40×40 para cumprir Apple HIG (mínimo 44px) */
 .modal-close-btn {
   background: var(--bg-cream);
   border: 1px solid var(--border);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1103,8 +1088,8 @@ details.settings-details[open] summary {
 }
 
 .btn-remove-pet {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: var(--bg-cream);
@@ -1213,4 +1198,22 @@ details.settings-details[open] summary {
   color: var(--primary);
 }
 
+/* ============================================================
+   DATE NAV ARROWS — touch target override (Apple HIG ≥ 44px)
+   Os botões prev/next usam inline style de 36×36; este bloco
+   sobrescreve via !important para garantir área de toque correta.
+   ============================================================ */
+#btn-date-prev,
+#btn-date-next,
+#btn-bath-date-prev,
+#btn-bath-date-next,
+#btn-sitter-date-prev,
+#btn-sitter-date-next {
+  width: 44px !important;
+  height: 44px !important;
+}
 
+/* Pet-select chips: garante altura mínima ergonômica */
+.pet-select-chip {
+  min-height: 36px;
+}
