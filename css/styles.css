@@ -277,7 +277,7 @@ h1, h2, h3, h4, .brand-title {
   min-width: 0;
   min-height: 44px;
   padding: 10px 14px;
-  font-size: 0.95rem;
+  font-size: 1rem; /* 16px: previne auto-zoom destrutivo no Safari iOS */
   font-family: inherit;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -400,31 +400,32 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .milestone-close-btn {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.14);
   border: none;
   border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
+  font-size: 1.1rem;
   font-weight: 800;
   cursor: pointer;
   color: inherit;
-  opacity: 0.8;
+  opacity: 0.85;
   transition: var(--transition);
   padding: 0;
   flex-shrink: 0;
+  touch-action: manipulation;
 }
 
 .milestone-close-btn:hover,
 .milestone-close-btn:active {
   opacity: 1;
-  transform: scale(1.12);
-  background: rgba(0, 0, 0, 0.22);
+  transform: scale(1.08);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .walk-milestone-banner.halfway {
@@ -519,25 +520,33 @@ input[type="date"]::-webkit-date-and-time-value {
   bottom: 0;
   left: 0;
   right: 0;
+  max-width: 600px;
+  margin: 0 auto;
   z-index: 1000;
   background: var(--surface-trans);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
   display: flex;
   justify-content: space-around;
   /* iOS Safe Area: compensate for Home Indicator */
-  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.74rem; /* Legibilidade: acima do limiar de 11px */
   font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
   background: none;
   border: none;
@@ -545,13 +554,24 @@ input[type="date"]::-webkit-date-and-time-value {
   flex: 1;
   min-width: 0;
   min-height: 48px;
-  padding: 4px 1px;
+  padding: 4px 2px;
   transition: var(--transition);
   position: relative;
   white-space: nowrap;
   touch-action: manipulation;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-sm);
+}
+
+.nav-item:active {
+  transform: scale(0.95);
+  opacity: 0.85;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 .nav-item * {
@@ -966,9 +986,33 @@ input[type="date"]::-webkit-date-and-time-value {
   margin: 12px 0 16px 0;
 }
 
+@media (max-width: 679px) {
+  /* Faturamento Total é exibido como destaque hero no topo, formando layout equilibrado 1 + 2x2 sem buracos */
+  .summary-metric-card.highlight {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+  }
+
+  .summary-metric-card.highlight .summary-metric-label {
+    font-size: 0.85rem;
+  }
+
+  .summary-metric-card.highlight .summary-metric-value {
+    font-size: 1.45rem;
+  }
+}
+
 @media (min-width: 680px) {
   .month-summary-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  .summary-metric-card.highlight {
+    grid-column: span 2;
   }
 }
 
@@ -1211,9 +1255,67 @@ details.settings-details[open] summary {
 #btn-sitter-date-next {
   width: 44px !important;
   height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
 }
 
 /* Pet-select chips: garante altura mínima ergonômica */
 .pet-select-chip {
-  min-height: 36px;
+  min-height: 38px;
+}
+
+/* ============================================================
+   IOS SAFARI AUTO-ZOOM PREVENTION (WCAG & Apple HIG)
+   Impede zoom-in destrutivo forçado pelo iOS Safari em campos < 16px
+   ============================================================ */
+@media (max-width: 768px) {
+  .form-input, 
+  .form-select, 
+  .form-textarea,
+  input[type="date"],
+  input[type="time"],
+  input[type="month"],
+  #filter-daily-date,
+  #filter-bath-date,
+  #filter-sitter-date,
+  #invoice-month-picker {
+    font-size: 16px !important;
+  }
+}
+
+/* ============================================================
+   TOUCH TARGET ACCESSIBILITY (Apple HIG ≥ 44×44px)
+   ============================================================ */
+#btn-toggle-lock-pin-visibility,
+#btn-toggle-setting-pin-visibility {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-close-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   TACTILE FEEDBACK & HAPTIC PRESS (Doherty Threshold & WCAG 2.2)
+   ============================================================ */
+.btn:active,
+.keypad-btn:active,
+.note-toggle:active {
+  transform: scale(0.97);
+  opacity: 0.92;
+}
+
+.btn:focus-visible,
+.keypad-btn:focus-visible,
+.modal-close-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

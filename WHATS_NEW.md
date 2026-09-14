@@ -1,6 +1,29 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.5 / Cache v39)**! Esta atualização traz a **Gestão Completa de Atividades de Pet Sitter**, a reorganização da barra de navegação com o botão de **Ajustes no Cabeçalho Superior**, suporte a múltiplos pets em uma única visita, faturamento integrado e backup na nuvem.
+Bem-vinda à nova versão do **Petwalker (v2.9.7 / Cache v41)**! Esta atualização traz um pacote completo de refinamento visual e ergonômico guiado por auditoria especializada de UI/UX (**Apple HIG, WCAG 2.2 AA e Material 3**), eliminando o auto-zoom do Safari iOS, expandindo alvos táteis, balanceando grids e adicionando rota ergonômica de retorno em Ajustes.
+
+---
+
+## 🎨 Principais Destaques (v2.9.7 — Refinamento UI/UX)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🍎 Apple HIG Touch Targets (44px) │ 🔍 Prevenção de Auto-Zoom no iOS Safari │
+│ ⬅️ Botão Voltar em Ajustes         │ 📊 Grid de Faturas 1 + 2x2 Balanceado   │
+│ 📱 Bottom Nav Contida no Desktop  │ ✨ Feedback Tátil e Foco Acessível      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### ✨ Melhorias Aplicadas:
+1. **Prevenção de Auto-Zoom no Safari iOS**: Todos os campos de input, seletores e date-pickers ajustados com `font-size: 16px` no mobile, eliminando o comportamento destrutivo de zoom-in automático do Safari ao tocar nos campos.
+2. **Alvos Táteis Apple HIG (≥ 44×44px)**:
+   - Botão de fechar milestone do cronômetro (`.milestone-close-btn`) ampliado de 26px para 44×44px.
+   - Botões de navegação diária `[ ◀ ]` e `[ ▶ ]` em Passeios, Banhos e Pet Sitter ampliados para 44×44px.
+   - Botões de visibilidade de PIN (`👁️`) expandidos para área de toque de 44×44px.
+3. **Botão de Retorno e Rota em Ajustes**: Nova barra superior em Ajustes com botão `← Voltar` e retorno com um toque à tela anterior, com realce visual inteligente no cabeçalho superior.
+4. **Contenção da Barra Inferior em Telas Largas**: A `.bottom-nav` agora possui contenção centralizada de 600px com bordas superiores arredondadas e sombra suave em tablets e computadores, eliminando o espaçamento excessivo entre ícones.
+5. **Harmonização do Grid de Faturas**: O card de Faturamento Total agora ocupa a linha superior completa no mobile (`grid-column: 1 / -1`), formando uma composição simétrica 1 + 2×2 sem vácuos à direita.
+6. **Legibilidade e Acessibilidade Assistiva**: Rótulos da barra inferior com tamanho legível (≥ 11.8px) e anel de foco `:focus-visible` para navegação universal por teclado.
 
 ---
 

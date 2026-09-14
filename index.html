@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Petwalker">
 
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=41">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
     <h2 style="font-size: 1.5rem; color: var(--primary);">Petwalker</h2>
     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px;">
       <p id="lock-subtitle" style="color: var(--text-muted); font-size: 0.9rem;">Insira o PIN de 4 dígitos</p>
-      <button type="button" id="btn-toggle-lock-pin-visibility" style="background: none; border: none; font-size: 1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar dígitos digitados">👁️</button>
+      <button type="button" id="btn-toggle-lock-pin-visibility" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65; width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;" title="Mostrar/Ocultar dígitos digitados" aria-label="Mostrar ou ocultar dígitos do PIN">👁️</button>
     </div>
 
     <div class="pin-dots">
@@ -194,19 +194,19 @@
       </div>
 
       <!-- BARRA DE NAVEGAÇÃO DE DATA DESTAQUE -->
-      <div class="date-nav-toolbar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 4px 6px; margin-bottom: 16px; gap: 6px;">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-date-prev" title="Dia Anterior" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+      <div class="date-nav-toolbar" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 4px 8px; margin-bottom: 16px; gap: 6px; min-height: 52px;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-date-prev" title="Dia Anterior" aria-label="Dia Anterior" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ◀
         </button>
         
         <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0;">
-          <input type="date" id="filter-daily-date" class="form-input" style="padding: 4px 6px; font-size: 0.88rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 140px; height: 36px; white-space: nowrap;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-date-today" title="Ir para Hoje" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-pill); height: 30px;">
+          <input type="date" id="filter-daily-date" class="form-input" style="padding: 4px 6px; font-size: 1rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 145px; height: 40px; min-height: 40px; white-space: nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-date-today" title="Ir para Hoje" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-pill); min-height: 38px;">
             Hoje
           </button>
         </div>
 
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-date-next" title="Próximo Dia" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-date-next" title="Próximo Dia" aria-label="Próximo Dia" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ▶
         </button>
       </div>
@@ -248,19 +248,19 @@
       </div>
 
       <!-- Barra de Navegação por Datas (Pill Bar) -->
-      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 6px 10px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill);">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-prev" title="Dia Anterior" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 4px 8px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill); min-height: 52px;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-prev" title="Dia Anterior" aria-label="Dia Anterior" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ◀
         </button>
         
         <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0;">
-          <input type="date" id="filter-bath-date" class="form-input" style="padding: 4px 6px; font-size: 0.88rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 140px; height: 36px; white-space: nowrap;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-bath-date-today" title="Ir para Hoje" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-pill); height: 30px;">
+          <input type="date" id="filter-bath-date" class="form-input" style="padding: 4px 6px; font-size: 1rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 145px; height: 40px; min-height: 40px; white-space: nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-bath-date-today" title="Ir para Hoje" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-pill); min-height: 38px;">
             Hoje
           </button>
         </div>
 
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-next" title="Próximo Dia" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-bath-date-next" title="Próximo Dia" aria-label="Próximo Dia" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ▶
         </button>
       </div>
@@ -299,19 +299,19 @@
       </div>
 
       <!-- Barra de Navegação por Datas (Pill Bar) -->
-      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 6px 10px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill);">
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-prev" title="Dia Anterior" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+      <div class="date-navigator-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; padding: 4px 8px; background: var(--bg-cream); border: 1px solid var(--border); border-radius: var(--radius-pill); min-height: 52px;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-prev" title="Dia Anterior" aria-label="Dia Anterior" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ◀
         </button>
         
         <div style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0;">
-          <input type="date" id="filter-sitter-date" class="form-input" style="padding: 4px 6px; font-size: 0.88rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 140px; height: 36px; white-space: nowrap;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-sitter-date-today" title="Ir para Hoje" style="padding: 4px 10px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-pill); height: 30px;">
+          <input type="date" id="filter-sitter-date" class="form-input" style="padding: 4px 6px; font-size: 1rem; font-weight: 700; text-align: center; border: none; background: transparent; color: var(--text-main); cursor: pointer; max-width: 145px; height: 40px; min-height: 40px; white-space: nowrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-sitter-date-today" title="Ir para Hoje" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-pill); min-height: 38px;">
             Hoje
           </button>
         </div>
 
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-next" title="Próximo Dia" style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-sitter-date-next" title="Próximo Dia" aria-label="Próximo Dia" style="width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1rem; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer;">
           ▶
         </button>
       </div>
@@ -451,6 +451,14 @@
   </main>
 
   <main id="view-settings" class="view">
+    <!-- BARRA SUPERIOR DE AJUSTES COM RETORNO ERGONÔMICO -->
+    <div class="settings-top-nav" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <button type="button" class="btn btn-outline btn-sm" id="btn-settings-back" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; min-height: 44px; padding: 8px 16px;">
+        ← Voltar
+      </button>
+      <span style="font-size: 0.92rem; font-weight: 700; color: var(--text-muted);">⚙️ Ajustes &amp; Configurações</span>
+    </div>
+
     <!-- CARD 1: GERAL & COBRANÇA -->
     <div class="settings-group-card">
       <div class="settings-group-title">
@@ -487,11 +495,11 @@
         <label class="form-label">PIN de Segurança (4 dígitos)</label>
         <div style="display: flex; gap: 8px; align-items: center;">
           <div style="position: relative; flex: 1;">
-            <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 38px;">
-            <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN">👁️</button>
+            <input type="password" inputmode="numeric" pattern="[0-9]*" class="form-input" id="input-setting-pin" maxlength="4" placeholder="Ex: 1234" style="padding-right: 48px;">
+            <button type="button" id="btn-toggle-setting-pin-visibility" style="position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: 0.65;" title="Mostrar/Ocultar PIN" aria-label="Mostrar ou ocultar dígitos do PIN">👁️</button>
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-save-pin">Salvar</button>
-          <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none;" title="Remover PIN">Remover</button>
+          <button class="btn btn-primary btn-sm" id="btn-save-pin" style="min-height: 44px; padding: 0 16px;">Salvar</button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn-remove-pin" style="display: none; min-height: 44px; padding: 0 14px;" title="Remover PIN">Remover</button>
         </div>
         <div id="pin-status-info" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;"></div>
       </div>
@@ -1041,6 +1049,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/app.js?v=40"></script>
+  <script type="module" src="src/app.js?v=41"></script>
 </body>
 </html>

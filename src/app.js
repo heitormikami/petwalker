@@ -109,9 +109,9 @@ if (typeof StorageService !== 'undefined') {
 }
 
 export const APP_CONFIG = {
-  version: '2.9.6',
-  build: '2026.09.10',
-  cacheVersion: 'v40'
+  version: '2.9.7',
+  build: '2026.09.14',
+  cacheVersion: 'v41'
 };
 
 function renderAppVersionInfo() {
@@ -137,6 +137,7 @@ const state = {
   timerInterval: null,
   walkAlertTimers: {},
   activeView: 'view-walk',
+  previousView: 'view-walk',
   enteredPin: ''
 };
 
@@ -490,47 +491,74 @@ function updatePinDots() {
 function setupNavigation() {
   const navItems = document.querySelectorAll('.nav-item');
   const views = document.querySelectorAll('.view');
+  const btnHeaderSettings = document.getElementById('btn-header-settings');
+  const btnSettingsBack = document.getElementById('btn-settings-back');
+
+  function navigateTo(targetId) {
+    if (!targetId) return;
+    if (state.activeView !== 'view-settings' && targetId !== state.activeView) {
+      state.previousView = state.activeView || 'view-walk';
+    }
+
+    navItems.forEach(n => {
+      if (n.dataset.target === targetId) {
+        n.classList.add('active');
+      } else {
+        n.classList.remove('active');
+      }
+    });
+
+    views.forEach(v => v.classList.remove('active'));
+    const targetView = document.getElementById(targetId);
+    if (targetView) targetView.classList.add('active');
+    state.activeView = targetId;
+
+    if (btnHeaderSettings) {
+      if (targetId === 'view-settings') {
+        btnHeaderSettings.classList.add('active');
+        btnHeaderSettings.style.background = 'var(--primary-light)';
+        btnHeaderSettings.style.borderColor = 'var(--primary)';
+        btnHeaderSettings.style.color = 'var(--primary)';
+      } else {
+        btnHeaderSettings.classList.remove('active');
+        btnHeaderSettings.style.background = '';
+        btnHeaderSettings.style.borderColor = '';
+        btnHeaderSettings.style.color = '';
+      }
+    }
+
+    try {
+      if (targetId === 'view-daily') renderDailyView();
+      else if (targetId === 'view-baths') renderDailyBaths();
+      else if (targetId === 'view-sitter') renderDailySitters();
+      else if (targetId === 'view-tutors') renderTutorsList();
+      else if (targetId === 'view-invoice') renderInvoiceView();
+      else if (targetId === 'view-settings') renderSettingsView();
+    } catch (err) {
+      console.error(`Erro ao alternar para view ${targetId}:`, err);
+    }
+  }
 
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
-      const targetId = item.dataset.target;
-      if (!targetId) return;
-
-      navItems.forEach(n => n.classList.remove('active'));
-      views.forEach(v => v.classList.remove('active'));
-
-      item.classList.add('active');
-      const targetView = document.getElementById(targetId);
-      if (targetView) targetView.classList.add('active');
-      state.activeView = targetId;
-
-      try {
-        if (targetId === 'view-daily') renderDailyView();
-        else if (targetId === 'view-baths') renderDailyBaths();
-        else if (targetId === 'view-sitter') renderDailySitters();
-        else if (targetId === 'view-tutors') renderTutorsList();
-        else if (targetId === 'view-invoice') renderInvoiceView();
-        else if (targetId === 'view-settings') renderSettingsView();
-      } catch (err) {
-        console.error(`Erro ao alternar para view ${targetId}:`, err);
-      }
+      navigateTo(item.dataset.target);
     });
   });
 
-  const btnHeaderSettings = document.getElementById('btn-header-settings');
   if (btnHeaderSettings) {
     btnHeaderSettings.addEventListener('click', () => {
-      navItems.forEach(n => n.classList.remove('active'));
-      views.forEach(v => v.classList.remove('active'));
-      const settingsView = document.getElementById('view-settings');
-      if (settingsView) settingsView.classList.add('active');
-      state.activeView = 'view-settings';
-      try {
-        renderSettingsView();
-      } catch (err) {
-        console.error('Erro ao alternar para ajustes:', err);
+      if (state.activeView === 'view-settings') {
+        navigateTo(state.previousView || 'view-walk');
+      } else {
+        navigateTo('view-settings');
       }
+    });
+  }
+
+  if (btnSettingsBack) {
+    btnSettingsBack.addEventListener('click', () => {
+      navigateTo(state.previousView || 'view-walk');
     });
   }
 }
