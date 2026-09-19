@@ -1,8 +1,26 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.7 / Cache v41)**! Esta atualização traz um pacote completo de refinamento visual e ergonômico guiado por auditoria especializada de UI/UX (**Apple HIG, WCAG 2.2 AA e Material 3**), eliminando o auto-zoom do Safari iOS, expandindo alvos táteis, balanceando grids e adicionando rota ergonômica de retorno em Ajustes.
+Bem-vinda à nova versão do **Petwalker (v2.9.8 / Cache v42)**! Esta atualização corrige uma falha crítica na rotina de sincronização automática em segundo plano com o Google Drive, garantindo que os atendimentos de **Pet Sitter** sejam devidamente incluídos no payload de auto-backup ao conectar no Wi-Fi.
 
 ---
+
+## ⚡ Correção Crítica (v2.9.8 — Sincronização de Pet Sitter)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ☁️ Inclusão de Pet Sitter no Auto-Sync Wi-Fi (triggerAutoSyncIfEligible)    │
+│ 🔄 Paridade de Coleções entre Auto-Backup, Backup Manual e Exportação       │
+│ 🧪 Testes Automatizados de Integridade de Sincronização Adicionados        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### ✨ Detalhes da Correção:
+1. **Inclusão de `petSitters` no Auto-Backup**: O payload enviado para o Google Apps Script na função `triggerAutoSyncIfEligible()` agora inclui obrigatoriamente a coleção `petSitters: state.petSitters || []`. Anteriormente, apenas o backup manual e a exportação continham essa chave, fazendo com que o auto-backup disparado pelo celular sobrescrevesse o snapshot na nuvem sem os atendimentos de Pet Sitter.
+2. **Atualização do Cache do PWA para v42**: Service Worker (`sw.js`) e referências atualizadas para garantir a recepção imediata do patch no celular e no computador.
+3. **Bateria de Testes Automatizados**: Adicionados testes de integridade para validar a presença de todas as 7 entidades em todos os pontos de backup e exportação.
+
+---
+
 
 ## 🎨 Principais Destaques (v2.9.7 — Refinamento UI/UX)
 

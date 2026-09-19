@@ -84,3 +84,45 @@ test('UI Integrity - Modal do Tutor não exige Pet para banho obrigatoriamente',
   assert.ok(!appJsContent.includes('class="form-input pet-name-input" placeholder="Nome do Pet" required'), 'pet-name-input dinâmico não deve ter required');
 });
 
+test('Sync Integrity - triggerAutoSyncIfEligible inclui petSitters no payload', () => {
+  const appJsContent = fs.readFileSync(path.resolve('src/app.js'), 'utf-8');
+  const autoSyncMatch = appJsContent.match(/async function triggerAutoSyncIfEligible[\s\S]*?const payload = \{([\s\S]*?)\};/);
+  assert.ok(autoSyncMatch, 'Função triggerAutoSyncIfEligible com payload deve existir');
+  const payloadBody = autoSyncMatch[1];
+  assert.ok(payloadBody.includes('petSitters: state.petSitters || []'), 'Payload de auto-sync deve conter petSitters: state.petSitters || []');
+  assert.ok(payloadBody.includes('baths: state.baths || []'), 'Payload de auto-sync deve conter baths: state.baths || []');
+  assert.ok(payloadBody.includes('tutors: state.tutors'), 'Payload de auto-sync deve conter tutors');
+  assert.ok(payloadBody.includes('sessions: state.sessions'), 'Payload de auto-sync deve conter sessions');
+});
+
+test('Sync Integrity - Todos os fluxos de backup e exportação incluem petSitters', () => {
+  const appJsContent = fs.readFileSync(path.resolve('src/app.js'), 'utf-8');
+  
+  // Manual backup
+  const manualSyncMatch = appJsContent.match(/btnSyncGoogle\.addEventListener\('click'[\s\S]*?const payload = \{([\s\S]*?)\};/);
+  assert.ok(manualSyncMatch, 'Manual sync payload deve existir');
+  assert.ok(manualSyncMatch[1].includes('petSitters: state.petSitters || []'), 'Manual sync deve conter petSitters');
+
+  // Export JSON
+  const exportMatch = appJsContent.match(/btnExport\.addEventListener\('click'[\s\S]*?const payload = \{([\s\S]*?)\};/);
+  assert.ok(exportMatch, 'Export payload deve existir');
+  assert.ok(exportMatch[1].includes('petSitters: state.petSitters || []'), 'Export deve conter petSitters');
+
+  // Restore pull
+  const restoreMatch = appJsContent.match(/pullRes\.payload[\s\S]*?const \{([\s\S]*?)\} = pullRes\.payload;/);
+  assert.ok(restoreMatch, 'Restore desestruturação deve existir');
+  assert.ok(restoreMatch[1].includes('petSitters'), 'Restore deve desestruturar petSitters');
+  assert.ok(appJsContent.includes('for (const item of petSitters) await StorageService.savePetSitter(item);'), 'Restore deve salvar petSitters no StorageService');
+});
+
+test('Cache & Version Integrity - Versões sincronizadas entre app.js, sw.js e index.html', () => {
+  const appJsContent = fs.readFileSync(path.resolve('src/app.js'), 'utf-8');
+  const swJsContent = fs.readFileSync(path.resolve('sw.js'), 'utf-8');
+
+  assert.ok(appJsContent.includes("version: '2.9.8'"), 'app.js deve estar na versão 2.9.8');
+  assert.ok(appJsContent.includes("cacheVersion: 'v42'"), 'app.js deve estar no cache v42');
+  assert.ok(swJsContent.includes("CACHE_NAME = 'petwalker-v42'"), 'sw.js deve ter CACHE_NAME petwalker-v42');
+  assert.ok(htmlContent.includes('styles.css?v=42'), 'index.html deve referenciar styles.css?v=42');
+  assert.ok(htmlContent.includes('app.js?v=42'), 'index.html deve referenciar app.js?v=42');
+});
+

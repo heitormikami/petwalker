@@ -109,9 +109,9 @@ if (typeof StorageService !== 'undefined') {
 }
 
 export const APP_CONFIG = {
-  version: '2.9.7',
-  build: '2026.09.14',
-  cacheVersion: 'v41'
+  version: '2.9.8',
+  build: '2026.09.19',
+  cacheVersion: 'v42'
 };
 
 function renderAppVersionInfo() {
@@ -3548,6 +3548,7 @@ async function triggerAutoSyncIfEligible(reason = 'auto') {
       pets: state.pets,
       sessions: state.sessions,
       baths: state.baths || [],
+      petSitters: state.petSitters || [],
       adjustments: state.adjustments
     };
 
