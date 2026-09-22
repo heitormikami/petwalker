@@ -1,6 +1,26 @@
 # 🐾 Petwalker PWA — Novidades da Versão (What's New)
 
-Bem-vinda à nova versão do **Petwalker (v2.9.8 / Cache v42)**! Esta atualização corrige uma falha crítica na rotina de sincronização automática em segundo plano com o Google Drive, garantindo que os atendimentos de **Pet Sitter** sejam devidamente incluídos no payload de auto-backup ao conectar no Wi-Fi.
+Bem-vinda à nova versão do **Petwalker (v2.9.9 / Cache v43)**! Esta atualização aprimora a confiabilidade e eficiência da sincronização automática em segundo plano com o Google Drive, eliminando bloqueios de envio no Android e implementando debounce inteligente contra envios excessivos no 4G/5G.
+
+---
+
+## ⚡ Confiabilidade & Eficiência de Sincronização (v2.9.9)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🌐 Fim do Bloqueio Silencioso no Android (isOnline vs isWifiConnection)    │
+│ ⏳ Debounce Inteligente de 3 Minutos em Edições de Dados (data_mutation)    │
+│ 🚀 Sincronização Imediata Mantida para Reconexão, Troca de Rede e Foco      │
+│ 🔄 Retentativa Automática para Edições Ocorridas Durante Sync Ativo        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### ✨ Detalhes da Atualização:
+1. **Confiabilidade no Android Mobile (`isOnline`)**: A API `navigator.connection.type` frequentemente retornava `'cellular'` ou `'unknown'` no Chrome para Android mesmo quando o aparelho estava conectado a uma rede Wi-Fi, fazendo com que o app bloqueasse silenciosamente o auto-sync de alterações pendentes. A verificação foi simplificada para `navigator.onLine`, garantindo que edições salvas subam confiavelmente.
+2. **Debounce de 3 Minutos para Mutações de Dados**: Ao editar passeios, banhos ou pet sitters em sequência (inclusive via dados móveis 4G/5G), o app agora aguarda uma janela de 3 minutos de inatividade antes de despachar o payload para o Google Drive. Isso economiza bateria e plano de dados, evitando requisições consecutivas desnecessárias.
+3. **Sync Imediato em Eventos Críticos**: Reconexão à internet (`online`), alternância de rede (`network_change`) e retomada do aplicativo (`focus`) continuam acionando sincronização imediata, aproveitando janelas naturais de conectividade.
+4. **Proteção Contra Sobrescrita & Retry Seguro**: Caso uma nova edição seja realizada exatamente enquanto um ciclo de sincronização já estiver em execução, o estado de pendência é preservado e uma nova tentativa é automaticamente reagendada ao final do processo.
+5. **Atualização de Cache para v43**: Atualização de referências e do Service Worker para assegurar atualização instantânea em dispositivos móveis e desktops.
 
 ---
 

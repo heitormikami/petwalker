@@ -109,9 +109,9 @@ if (typeof StorageService !== 'undefined') {
 }
 
 export const APP_CONFIG = {
-  version: '2.9.8',
-  build: '2026.09.19',
-  cacheVersion: 'v42'
+  version: '2.9.9',
+  build: '2026.09.21',
+  cacheVersion: 'v43'
 };
 
 function renderAppVersionInfo() {
@@ -3516,29 +3516,39 @@ function updateSyncStatusBadge() {
   }
 }
 
-function isWifiConnection() {
-  if (!navigator.onLine) return false;
-  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (conn) {
-    if (conn.type) {
-      return conn.type === 'wifi' || conn.type === 'ethernet';
-    }
-    if (conn.saveData) return false;
-  }
-  // No iOS / Safari onde navigator.connection não expõe o tipo
-  return true;
+function isOnline() {
+  return navigator.onLine;
 }
 
 let isAutoSyncRunning = false;
+let autoSyncDebounceTimer = null;
+const AUTO_SYNC_DEBOUNCE_MS = 3 * 60 * 1000; // 3 minutos
+
 async function triggerAutoSyncIfEligible(reason = 'auto') {
-  if (isAutoSyncRunning) return;
   if (state.settings.autoBackupEnabled === false) return;
   if (!state.settings.googleScriptUrl) return;
   if (!state.settings.pendingSync) return;
-  if (!isWifiConnection()) return;
+  if (!isOnline()) return;
+
+  // Mutações de dados: debounce de 3 minutos para não disparar a cada edição no 4G.
+  // Eventos de rede/foco disparam imediatamente (janelas naturais de sync).
+  if (reason === 'data_mutation') {
+    if (autoSyncDebounceTimer) clearTimeout(autoSyncDebounceTimer);
+    autoSyncDebounceTimer = setTimeout(() => {
+      autoSyncDebounceTimer = null;
+      triggerAutoSyncIfEligible('debounced_mutation');
+    }, AUTO_SYNC_DEBOUNCE_MS);
+    return;
+  }
+
+  if (isAutoSyncRunning) return;
 
   try {
     isAutoSyncRunning = true;
+    if (autoSyncDebounceTimer) {
+      clearTimeout(autoSyncDebounceTimer);
+      autoSyncDebounceTimer = null;
+    }
     const badgeText = document.getElementById('sync-status-text');
     if (badgeText) badgeText.textContent = '☁️ Sincronizando com Google Drive...';
 
@@ -3562,6 +3572,13 @@ async function triggerAutoSyncIfEligible(reason = 'auto') {
     updateSyncStatusBadge();
   } finally {
     isAutoSyncRunning = false;
+    // Se houve nova mutação enquanto o sync estava em andamento, agenda retry
+    if (state.settings.pendingSync) {
+      autoSyncDebounceTimer = setTimeout(() => {
+        autoSyncDebounceTimer = null;
+        triggerAutoSyncIfEligible('retry_after_sync');
+      }, AUTO_SYNC_DEBOUNCE_MS);
+    }
   }
 }
 

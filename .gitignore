@@ -3,3 +3,4 @@ cloudflared.exe
 *.log
 scratch/
 .vscode/
+tmp/

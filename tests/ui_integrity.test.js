@@ -119,10 +119,10 @@ test('Cache & Version Integrity - Versões sincronizadas entre app.js, sw.js e i
   const appJsContent = fs.readFileSync(path.resolve('src/app.js'), 'utf-8');
   const swJsContent = fs.readFileSync(path.resolve('sw.js'), 'utf-8');
 
-  assert.ok(appJsContent.includes("version: '2.9.8'"), 'app.js deve estar na versão 2.9.8');
-  assert.ok(appJsContent.includes("cacheVersion: 'v42'"), 'app.js deve estar no cache v42');
-  assert.ok(swJsContent.includes("CACHE_NAME = 'petwalker-v42'"), 'sw.js deve ter CACHE_NAME petwalker-v42');
-  assert.ok(htmlContent.includes('styles.css?v=42'), 'index.html deve referenciar styles.css?v=42');
-  assert.ok(htmlContent.includes('app.js?v=42'), 'index.html deve referenciar app.js?v=42');
+  assert.ok(appJsContent.includes("version: '2.9.9'"), 'app.js deve estar na versão 2.9.9');
+  assert.ok(appJsContent.includes("cacheVersion: 'v43'"), 'app.js deve estar no cache v43');
+  assert.ok(swJsContent.includes("CACHE_NAME = 'petwalker-v43'"), 'sw.js deve ter CACHE_NAME petwalker-v43');
+  assert.ok(htmlContent.includes('styles.css?v=43'), 'index.html deve referenciar styles.css?v=43');
+  assert.ok(htmlContent.includes('app.js?v=43'), 'index.html deve referenciar app.js?v=43');
 });
 
