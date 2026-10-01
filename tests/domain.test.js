@@ -113,6 +113,7 @@ test('formatWhatsAppSummary - gera texto limpo e legível com PIX', () => {
   assert.ok(summary.includes('08/2026'));
   assert.ok(summary.includes('R$ 210,00'));
   assert.ok(summary.includes('contato@petwalker.com.br'));
+  assert.ok(summary.includes('Muito obrigada pelo carinho e confiança no meu serviço ! 🧡'));
 });
 
 test('formatEmailHtml - gera template HTML bem formatado com mensagem personalizada', () => {
@@ -134,6 +135,7 @@ test('formatEmailHtml - gera template HTML bem formatado com mensagem personaliz
   assert.ok(html.includes('Maria Silva'));
   assert.ok(html.includes('R$ 160,00'));
   assert.ok(html.includes('Thor se comportou muito bem este mês!'));
+  assert.ok(html.includes('Muito obrigada pelo carinho e confiança no meu serviço ! 🧡'));
 });
 
 test('Sessões com Quilometragem Opcional (Carro) - Registro e Totalização', () => {

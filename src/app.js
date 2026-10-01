@@ -3260,8 +3260,8 @@ function setupEmailPreviewModal() {
 
       const note = document.getElementById('preview-custom-note')?.value.trim() || '';
       const recipient = encodeURIComponent(invoice.tutorEmail || '');
-      const subject = encodeURIComponent(`Fechamento de Passeios Petwalker - ${invoice.periodMonthYear}`);
-      const plainBody = encodeURIComponent(`Olá, ${invoice.tutorName}!\n\nSegue o fechamento dos passeios (${invoice.periodMonthYear}):\nTotal de Passeios: ${invoice.totalSessions}\nTotal a Pagar: R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}\nChave PIX: ${invoice.pixKey}\n\n${note ? 'Mensagem: ' + note : ''}`);
+      const noteBlock = note ? `Mensagem: ${note}\n\n` : '';
+      const plainBody = encodeURIComponent(`Olá, ${invoice.tutorName}!\n\nSegue o fechamento dos atendimentos (${invoice.periodMonthYear}):\nTotal a Pagar: R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}\nChave PIX: ${invoice.pixKey}\n\n${noteBlock}Muito obrigada pelo carinho e confiança no meu serviço ! 🧡`);
 
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipient}&su=${subject}&body=${plainBody}`;
       window.open(gmailUrl, '_blank');

@@ -260,7 +260,7 @@ export function formatWhatsAppSummary(invoice) {
 
   lines.push(`\n💰 *Total a pagar:* R$ ${invoice.totalToPay.toFixed(2).replace('.', ',')}`);
   lines.push(`🔑 *Chave PIX:* ${invoice.pixKey}`);
-  lines.push(`\nMuito obrigado pelo carinho e confiança nos nossos serviços! 🧡`);
+  lines.push(`\nMuito obrigada pelo carinho e confiança no meu serviço ! 🧡`);
 
   return lines.join('\n');
 }
@@ -385,7 +385,11 @@ export function formatEmailHtml(invoice, customNote = '') {
       </div>
     </div>
 
-    <p style="font-size: 12px; color: #888888; text-align: center; margin-top: 24px;">
+    <p style="font-size: 14px; text-align: center; margin-top: 24px; color: #444;">
+      Muito obrigada pelo carinho e confiança no meu serviço ! 🧡
+    </p>
+
+    <p style="font-size: 12px; color: #888888; text-align: center; margin-top: 16px;">
       Petwalker - Passeios e Cuidados Caninos<br>
       Dúvidas? Entre em contato conosco!
     </p>
